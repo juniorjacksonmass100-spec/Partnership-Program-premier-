@@ -1,0 +1,6 @@
+{
+  "name": "Jerusalem Ministry of Gospel - Mpango wa Ushirika na Utoaji",
+  "description": "Mfumo rasmi wa ushirika, ahadi na utoaji wa Jerusalem Ministry of Gospel. Simamia ahadi, michango, na taarifa za utoaji kwa uwazi.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
