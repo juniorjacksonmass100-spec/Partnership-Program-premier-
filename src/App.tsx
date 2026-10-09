@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { supabase, isSupabaseConfigured } from './lib/supabase';
@@ -8,7 +8,9 @@ import {
   Expense, 
   Profile, 
   MinistryNews, 
-  Testimonial 
+  Testimonial,
+  AppNotification,
+  DirectMessage
 } from './types/database.types';
 import { Header } from './components/Header';
 import { ScriptureBanner } from './components/ScriptureBanner';
@@ -25,6 +27,9 @@ import { SupabaseConfigModal } from './components/SupabaseConfigModal';
 import { AdminNewsModal } from './components/AdminNewsModal';
 import { TestimonialModal } from './components/TestimonialModal';
 import { AdminTestimonialsModal } from './components/AdminTestimonialsModal';
+import { NotificationModal } from './components/NotificationModal';
+import { MessagingModal } from './components/MessagingModal';
+import { WipeDatabaseModal } from './components/WipeDatabaseModal';
 import { EmblemLogo } from './components/EmblemLogo';
 import { 
   HeartHandshake, 
@@ -110,6 +115,28 @@ const DEFAULT_TESTIMONIALS: Testimonial[] = [
   },
 ];
 
+// Starter notifications
+const DEFAULT_NOTIFICATIONS: AppNotification[] = [
+  {
+    id: 'notif-1',
+    user_id: null,
+    title: 'Karibu Jerusalem Ministry of Gospel',
+    message: 'Akaunti yako ya ushirika iko tayari. Unaweza kurekodi sadaka, kuweka ahadi au kuwasiliana na uongozi.',
+    type: 'system',
+    is_read: false,
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: 'notif-2',
+    user_id: null,
+    title: 'Mradi wa Ujenzi wa Hekalu Unaendelea',
+    message: 'Taarifa mpya za maendeleo ya madhabahu zimepakiwa. Bwana akubariki kwa uaminifu wako.',
+    type: 'announcement',
+    is_read: false,
+    created_at: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+  },
+];
+
 function MainAppContent() {
   const { user, profile, isAdmin, loading: authLoading, isConfigured } = useAuth();
   const { isDark } = useTheme();
@@ -130,6 +157,9 @@ function MainAppContent() {
   const [adminNewsModalOpen, setAdminNewsModalOpen] = useState(false);
   const [testimonialModalOpen, setTestimonialModalOpen] = useState(false);
   const [adminTestimonialsModalOpen, setAdminTestimonialsModalOpen] = useState(false);
+  const [notificationModalOpen, setNotificationModalOpen] = useState(false);
+  const [messagingModalOpen, setMessagingModalOpen] = useState(false);
+  const [wipeDatabaseModalOpen, setWipeDatabaseModalOpen] = useState(false);
 
   // Selected entities
   const [activeReceiptContribution, setActiveReceiptContribution] = useState<Contribution | null>(null);
@@ -142,6 +172,8 @@ function MainAppContent() {
   const [allExpenses, setAllExpenses] = useState<Expense[]>([]);
   const [newsList, setNewsList] = useState<MinistryNews[]>(DEFAULT_NEWS);
   const [testimonials, setTestimonials] = useState<Testimonial[]>(DEFAULT_TESTIMONIALS);
+  const [notifications, setNotifications] = useState<AppNotification[]>(DEFAULT_NOTIFICATIONS);
+  const [messages, setMessages] = useState<DirectMessage[]>([]);
   const [dataLoading, setDataLoading] = useState(false);
 
   // Fetch News and Testimonials (Public & Authenticated)
@@ -183,53 +215,119 @@ function MainAppContent() {
       if (isAdmin) {
         // Fetch all data for admin oversight
         const [
-          { data: pledgesData },
-          { data: contribsData },
-          { data: profilesData },
-          { data: expensesData },
+          pledgesRes,
+          contribsRes,
+          profilesRes,
+          expensesRes,
         ] = await Promise.all([
-          supabase.from('pledges').select('*, profiles(*)').order('created_at', { ascending: false }),
-          supabase.from('contributions').select('*, profiles(*), pledges(*)').order('contribution_date', { ascending: false }),
+          supabase.from('pledges').select('*').order('created_at', { ascending: false }),
+          supabase.from('contributions').select('*').order('contribution_date', { ascending: false }),
           supabase.from('profiles').select('*').order('created_at', { ascending: false }),
           supabase.from('expenses').select('*').order('expense_date', { ascending: false }),
         ]);
 
-        if (pledgesData) setPledges(pledgesData as Pledge[]);
-        if (contribsData) setContributions(contribsData as Contribution[]);
-        if (profilesData) setAllPartners(profilesData as Profile[]);
-        if (expensesData) setAllExpenses(expensesData as Expense[]);
+        const rawProfiles: Profile[] = (profilesRes.data as Profile[]) || [];
+        const rawPledges: Pledge[] = (pledgesRes.data as Pledge[]) || [];
+        const rawContribs: Contribution[] = (contribsRes.data as Contribution[]) || [];
+        const rawExpenses: Expense[] = (expensesRes.data as Expense[]) || [];
+
+        const profileMap = new Map<string, Profile>(rawProfiles.map(p => [p.id, p]));
+        const pledgeMap = new Map<string, Pledge>(rawPledges.map(p => [p.id, p]));
+
+        // Enrich pledges with profiles safely
+        const enrichedPledges: Pledge[] = rawPledges.map(p => ({
+          ...p,
+          profiles: profileMap.get(p.user_id) || (p.user_id === user.id ? profile || undefined : undefined),
+        }));
+
+        // Enrich contributions with profiles & pledges safely
+        const enrichedContribs: Contribution[] = rawContribs.map(c => ({
+          ...c,
+          profiles: profileMap.get(c.user_id) || (c.user_id === user.id ? profile || undefined : undefined),
+          pledges: c.pledge_id ? pledgeMap.get(c.pledge_id) : undefined,
+        }));
+
+        setPledges(enrichedPledges);
+        setContributions(enrichedContribs);
+        setAllPartners(rawProfiles);
+        setAllExpenses(rawExpenses);
       } else {
         // Fetch partner's own private records
-        const [
-          { data: pledgesData },
-          { data: contribsData },
-        ] = await Promise.all([
-          supabase.from('pledges').select('*, profiles(*)').eq('user_id', user.id).order('created_at', { ascending: false }),
-          supabase.from('contributions').select('*, profiles(*), pledges(*)').eq('user_id', user.id).order('contribution_date', { ascending: false }),
+        const [pledgesRes, contribsRes] = await Promise.all([
+          supabase.from('pledges').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
+          supabase.from('contributions').select('*').eq('user_id', user.id).order('contribution_date', { ascending: false }),
         ]);
 
-        if (pledgesData) setPledges(pledgesData as Pledge[]);
-        if (contribsData) setContributions(contribsData as Contribution[]);
+        const rawPledges: Pledge[] = (pledgesRes.data as Pledge[]) || [];
+        const rawContribs: Contribution[] = (contribsRes.data as Contribution[]) || [];
+        const pledgeMap = new Map<string, Pledge>(rawPledges.map(p => [p.id, p]));
+
+        const enrichedPledges: Pledge[] = rawPledges.map(p => ({
+          ...p,
+          profiles: profile || undefined,
+        }));
+
+        const enrichedContribs: Contribution[] = rawContribs.map(c => ({
+          ...c,
+          profiles: profile || undefined,
+          pledges: c.pledge_id ? pledgeMap.get(c.pledge_id) : undefined,
+        }));
+
+        setPledges(enrichedPledges);
+        setContributions(enrichedContribs);
+      }
+
+      // 3. Fetch Notifications
+      try {
+        const { data: notifData } = await supabase
+          .from('notifications')
+          .select('*')
+          .order('created_at', { ascending: false });
+        if (notifData && notifData.length > 0) {
+          setNotifications(notifData as AppNotification[]);
+        }
+      } catch (err) {
+        console.warn('Notifications fetch err:', err);
+      }
+
+      // 4. Fetch Messages
+      try {
+        const { data: msgData } = await supabase
+          .from('messages')
+          .select('*')
+          .order('created_at', { ascending: true });
+        if (msgData && msgData.length > 0) {
+          setMessages(msgData as DirectMessage[]);
+        }
+      } catch (err) {
+        console.warn('Messages fetch err:', err);
       }
     } catch (err) {
       console.error('Hitilafu wakati wa kusoma data kutoka Supabase:', err);
     } finally {
       setDataLoading(false);
     }
-  }, [user, isAdmin, fetchNewsAndTestimonials]);
+  }, [user?.id, isAdmin, fetchNewsAndTestimonials]);
+
+  const fetchDataRef = useRef(fetchData);
+  fetchDataRef.current = fetchData;
+
+  const fetchNewsRef = useRef(fetchNewsAndTestimonials);
+  fetchNewsRef.current = fetchNewsAndTestimonials;
 
   // Initial load
   useEffect(() => {
     fetchNewsAndTestimonials();
-    if (user) {
+    if (user?.id) {
       fetchData();
     } else {
-      setPledges([]);
-      setContributions([]);
-      setAllPartners([]);
-      setAllExpenses([]);
+      setPledges((prev) => (prev.length > 0 ? [] : prev));
+      setContributions((prev) => (prev.length > 0 ? [] : prev));
+      setAllPartners((prev) => (prev.length > 0 ? [] : prev));
+      setAllExpenses((prev) => (prev.length > 0 ? [] : prev));
+      setMessages((prev) => (prev.length > 0 ? [] : prev));
     }
-  }, [user, fetchData, fetchNewsAndTestimonials]);
+  }, [user?.id, isAdmin]);
 
   // Supabase Realtime synchronization
   useEffect(() => {
@@ -237,30 +335,161 @@ function MainAppContent() {
 
     const channel = supabase
       .channel('church-realtime-sync')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'pledges' }, () => fetchData())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'contributions' }, () => fetchData())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses' }, () => fetchData())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => fetchData())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'ministry_news' }, () => fetchNewsAndTestimonials())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'testimonials' }, () => fetchNewsAndTestimonials())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pledges' }, () => fetchDataRef.current())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'contributions' }, () => fetchDataRef.current())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses' }, () => fetchDataRef.current())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => fetchDataRef.current())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ministry_news' }, () => fetchNewsRef.current())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'testimonials' }, () => fetchNewsRef.current())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => fetchDataRef.current())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => fetchDataRef.current())
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, fetchData, fetchNewsAndTestimonials]);
+  }, [user?.id]);
+
+  // Send Direct Message
+  const handleSendMessage = useCallback(async (receiverId: string, messageText: string) => {
+    if (!user) return;
+    const newMsg: DirectMessage = {
+      id: `msg-${Date.now()}`,
+      sender_id: user.id,
+      receiver_id: receiverId,
+      sender_name: profile?.full_name || user.email || 'Mshirika',
+      sender_role: profile?.role || 'partner',
+      message: messageText,
+      is_read: false,
+      created_at: new Date().toISOString(),
+    };
+
+    setMessages((prev) => [...prev, newMsg]);
+
+    if (isSupabaseConfigured) {
+      try {
+        await supabase.from('messages').insert({
+          sender_id: user.id,
+          receiver_id: receiverId === 'admin' ? null : receiverId,
+          sender_name: profile?.full_name || user.email || 'Mshirika',
+          sender_role: profile?.role || 'partner',
+          message: messageText,
+          is_read: false,
+        });
+
+        // Also create a notification for the recipient
+        await supabase.from('notifications').insert({
+          user_id: receiverId === 'admin' ? null : receiverId,
+          title: `Ujumbe Mpya: ${profile?.full_name || 'Mshirika'}`,
+          message: messageText.length > 80 ? `${messageText.slice(0, 80)}...` : messageText,
+          type: 'message',
+          is_read: false,
+        });
+      } catch (err) {
+        console.error('Failed to save message in Supabase:', err);
+      }
+    }
+  }, [user?.id, user?.email, profile?.full_name, profile?.role]);
+
+  // Mark messages as read
+  const handleMarkMessagesAsRead = useCallback(async (partnerId: string) => {
+    if (!partnerId || !user) return;
+
+    setMessages((prev) => {
+      const hasUnread = prev.some(
+        (m) => m.sender_id === partnerId && (!m.receiver_id || m.receiver_id === user.id) && !m.is_read
+      );
+      if (!hasUnread) return prev;
+      return prev.map((m) =>
+        m.sender_id === partnerId && (!m.receiver_id || m.receiver_id === user.id)
+          ? { ...m, is_read: true }
+          : m
+      );
+    });
+
+    if (isSupabaseConfigured) {
+      try {
+        await supabase
+          .from('messages')
+          .update({ is_read: true })
+          .eq('sender_id', partnerId)
+          .eq('is_read', false);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  }, [user?.id]);
+
+  // Notifications handlers
+  const handleMarkNotificationAsRead = useCallback(async (id: string) => {
+    setNotifications((prev) => {
+      const target = prev.find((n) => n.id === id);
+      if (!target || target.is_read) return prev;
+      return prev.map((n) => (n.id === id ? { ...n, is_read: true } : n));
+    });
+    if (isSupabaseConfigured) {
+      try {
+        await supabase.from('notifications').update({ is_read: true }).eq('id', id);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  }, []);
+
+  const handleMarkAllNotificationsAsRead = useCallback(async () => {
+    setNotifications((prev) => {
+      const hasUnread = prev.some((n) => !n.is_read);
+      if (!hasUnread) return prev;
+      return prev.map((n) => ({ ...n, is_read: true }));
+    });
+    if (isSupabaseConfigured && user) {
+      try {
+        await supabase
+          .from('notifications')
+          .update({ is_read: true })
+          .or(`user_id.eq.${user.id},user_id.is.null`);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  }, [user?.id]);
+
+  const handleDeleteNotification = useCallback(async (id: string) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+    if (isSupabaseConfigured) {
+      try {
+        await supabase.from('notifications').delete().eq('id', id);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  }, []);
+
+  const handleClearAllNotifications = useCallback(async () => {
+    setNotifications([]);
+    if (isSupabaseConfigured && user) {
+      try {
+        await supabase
+          .from('notifications')
+          .delete()
+          .or(`user_id.eq.${user.id},user_id.is.null`);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  }, [user?.id]);
 
   // Open Receipt
-  const handleViewReceipt = (c: Contribution) => {
+  const handleViewReceipt = useCallback((c: Contribution) => {
     setActiveReceiptContribution(c);
     setReceiptModalOpen(true);
-  };
+  }, []);
 
   // Open Contribution with optional pledge ID
-  const handleOpenContribution = (pledgeId?: string) => {
+  const handleOpenContribution = useCallback((pledgeId?: string) => {
     setTargetPledgeIdForGiving(pledgeId);
     setContributionModalOpen(true);
-  };
+  }, []);
 
   // Current user's testimonials
   const userTestimonials = testimonials.filter((t) => t.user_id === user?.id);
@@ -294,6 +523,10 @@ function MainAppContent() {
         onOpenPledgeModal={() => setPledgeModalOpen(true)}
         onOpenContributionModal={() => handleOpenContribution()}
         onOpenSupabaseConfig={() => setSupabaseConfigModalOpen(true)}
+        onOpenNotifications={() => setNotificationModalOpen(true)}
+        onOpenMessages={() => setMessagingModalOpen(true)}
+        unreadNotificationsCount={notifications.filter((n) => !n.is_read).length}
+        unreadMessagesCount={messages.filter((m) => m.receiver_id === user?.id && !m.is_read).length}
       />
 
       {/* Animated News Ticker: Continuous animated television news crawler */}
@@ -314,12 +547,16 @@ function MainAppContent() {
                 allPledges={pledges}
                 allContributions={contributions}
                 allExpenses={allExpenses}
+                allMessages={messages}
                 onOpenPledgeModal={() => setPledgeModalOpen(true)}
                 onOpenContributionModal={() => handleOpenContribution()}
                 onOpenExpenseModal={() => setExpenseModalOpen(true)}
                 onViewReceipt={handleViewReceipt}
                 onOpenManageNews={() => setAdminNewsModalOpen(true)}
                 onOpenManageTestimonials={() => setAdminTestimonialsModalOpen(true)}
+                onOpenMessagingModal={() => setMessagingModalOpen(true)}
+                onOpenWipeDatabaseModal={() => setWipeDatabaseModalOpen(true)}
+                onSendMessage={handleSendMessage}
                 onRefreshData={fetchData}
               />
             ) : (
@@ -332,6 +569,7 @@ function MainAppContent() {
                   onOpenContributionModal={handleOpenContribution}
                   onViewReceipt={handleViewReceipt}
                   onOpenTestimonialModal={() => setTestimonialModalOpen(true)}
+                  onOpenMessages={() => setMessagingModalOpen(true)}
                   currentSubTab={currentTab as any}
                   newsList={newsList}
                 />
@@ -539,7 +777,17 @@ function MainAppContent() {
       <PledgeFormModal
         isOpen={pledgeModalOpen}
         onClose={() => setPledgeModalOpen(false)}
-        onSuccess={() => {
+        onSuccess={(newPledge) => {
+          if (newPledge) {
+            const enriched: Pledge = {
+              ...newPledge,
+              profiles: profile || undefined,
+            };
+            setPledges((prev) => {
+              if (prev.some((p) => p.id === newPledge.id)) return prev;
+              return [enriched, ...prev];
+            });
+          }
           fetchData();
         }}
         partnerList={allPartners}
@@ -548,23 +796,44 @@ function MainAppContent() {
       <ContributionFormModal
         isOpen={contributionModalOpen}
         onClose={() => setContributionModalOpen(false)}
-        onSuccess={(newContribId) => {
-          fetchData();
-          if (newContribId) {
-            setTimeout(() => {
-              supabase
-                .from('contributions')
-                .select('*, profiles(*), pledges(*)')
-                .eq('id', newContribId)
-                .single()
-                .then(({ data }) => {
-                  if (data) {
-                    setActiveReceiptContribution(data as Contribution);
-                    setReceiptModalOpen(true);
+        onSuccess={(newContrib) => {
+          if (newContrib) {
+            const targetPledge = pledges.find((p) => p.id === newContrib.pledge_id);
+            const enriched: Contribution = {
+              ...newContrib,
+              profiles: profile || undefined,
+              pledges: targetPledge,
+            };
+
+            setContributions((prev) => {
+              if (prev.some((c) => c.id === newContrib.id)) return prev;
+              return [enriched, ...prev];
+            });
+
+            // Update pledge status in local state if target amount fulfilled
+            if (newContrib.pledge_id) {
+              setPledges((prev) =>
+                prev.map((p) => {
+                  if (p.id === newContrib.pledge_id) {
+                    const alreadyPaid = contributions
+                      .filter((c) => c.pledge_id === p.id)
+                      .reduce((sum, c) => sum + (c.amount || 0), 0);
+                    const totalPaid = alreadyPaid + newContrib.amount;
+                    return {
+                      ...p,
+                      status: totalPaid >= p.target_amount ? 'completed' : p.status,
+                    };
                   }
-                });
-            }, 300);
+                  return p;
+                })
+              );
+            }
+
+            // Immediately display receipt
+            setActiveReceiptContribution(enriched);
+            setReceiptModalOpen(true);
           }
+          fetchData();
         }}
         userPledges={pledges}
         partnerList={allPartners}
@@ -574,7 +843,13 @@ function MainAppContent() {
       <ExpenseFormModal
         isOpen={expenseModalOpen}
         onClose={() => setExpenseModalOpen(false)}
-        onSuccess={() => {
+        onSuccess={(newExp) => {
+          if (newExp) {
+            setAllExpenses((prev) => {
+              if (prev.some((e) => e.id === newExp.id)) return prev;
+              return [newExp, ...prev];
+            });
+          }
           fetchData();
         }}
       />
@@ -616,6 +891,40 @@ function MainAppContent() {
         onClose={() => setAdminTestimonialsModalOpen(false)}
         testimonials={testimonials}
         onRefresh={fetchNewsAndTestimonials}
+      />
+
+      {/* In-app Notification Modal */}
+      <NotificationModal
+        isOpen={notificationModalOpen}
+        onClose={() => setNotificationModalOpen(false)}
+        notifications={notifications}
+        onMarkAsRead={handleMarkNotificationAsRead}
+        onMarkAllAsRead={handleMarkAllNotificationsAsRead}
+        onDeleteNotification={handleDeleteNotification}
+        onClearAll={handleClearAllNotifications}
+        onOpenMessages={() => setMessagingModalOpen(true)}
+      />
+
+      {/* Direct Messaging Modal */}
+      <MessagingModal
+        isOpen={messagingModalOpen}
+        onClose={() => setMessagingModalOpen(false)}
+        allPartners={allPartners}
+        messages={messages}
+        onSendMessage={handleSendMessage}
+        onMarkMessagesAsRead={handleMarkMessagesAsRead}
+      />
+
+      {/* Wipe / Reset Database Modal */}
+      <WipeDatabaseModal
+        isOpen={wipeDatabaseModalOpen}
+        onClose={() => setWipeDatabaseModalOpen(false)}
+        onSuccess={() => {
+          fetchData();
+          setPledges([]);
+          setContributions([]);
+          setAllExpenses([]);
+        }}
       />
     </div>
   );

@@ -15,6 +15,35 @@
   h1, h2, h3, .font-serif {
     font-family: 'Cinzel', serif, Georgia;
   }
+
+  /* Form controls: Universal high contrast styling in subtle purple dark mode */
+  input, select, textarea {
+    color: #ffffff !important;
+    background-color: #1a0e30;
+  }
+  
+  input::placeholder, textarea::placeholder {
+    color: rgba(216, 180, 254, 0.45) !important;
+  }
+
+  /* Dropdown category options styling across all operating systems */
+  select option {
+    background-color: #140924 !important;
+    color: #ffffff !important;
+    padding: 8px 12px;
+  }
+
+  /* Safeguard for elements with explicit white backgrounds like printed receipts */
+  .bg-white input,
+  .bg-white select,
+  .bg-white textarea {
+    color: #0f172a !important;
+    background-color: #ffffff !important;
+  }
+  .bg-white option {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+  }
 }
 
 /* TV Broadcast News Ticker Continuous Crawler */

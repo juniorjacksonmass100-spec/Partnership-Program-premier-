@@ -135,3 +135,29 @@ export interface Testimonial {
   created_at: string;
 }
 
+export type NotificationType = 'contribution' | 'pledge' | 'message' | 'announcement' | 'system';
+
+export interface AppNotification {
+  id: string;
+  user_id?: string | null; // null means broadcast to all
+  title: string;
+  message: string;
+  type: NotificationType;
+  link?: string | null;
+  is_read: boolean;
+  created_at: string;
+}
+
+export interface DirectMessage {
+  id: string;
+  sender_id: string;
+  receiver_id: string; // user id or admin id
+  sender_name: string;
+  sender_role: UserRole;
+  message: string;
+  is_read: boolean;
+  created_at: string;
+  sender_profile?: Profile;
+}
+
+

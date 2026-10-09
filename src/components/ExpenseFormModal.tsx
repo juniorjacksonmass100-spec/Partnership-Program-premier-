@@ -2,13 +2,13 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase, formatSupabaseError } from '../lib/supabase';
 import { formatTZS } from '../utils/formatters';
-import { X, TrendingDown, Calendar, FileText, AlertCircle, Loader2, CheckCircle2 } from 'lucide-react';
-import { ExpenseCategory } from '../types/database.types';
+import { X, TrendingDown, Calendar, FileText, AlertCircle, Loader2, Sparkles, Tag } from 'lucide-react';
+import { ExpenseCategory, Expense } from '../types/database.types';
 
 interface ExpenseFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (newExpense?: Expense) => void;
 }
 
 export const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
@@ -54,7 +54,7 @@ export const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
       const randomSuffix = Math.floor(1000 + Math.random() * 9000);
       const expenseNumber = `EXP-${currentYear}-${randomSuffix}`;
 
-      const { error } = await supabase.from('expenses').insert([
+      const { data: inserted, error } = await supabase.from('expenses').insert([
         {
           expense_number: expenseNumber,
           title: title.trim(),
@@ -65,11 +65,11 @@ export const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
           description: description.trim() || null,
           created_by: user?.id,
         },
-      ]);
+      ]).select().single();
 
       if (error) throw error;
 
-      onSuccess();
+      onSuccess(inserted as Expense);
       onClose();
     } catch (err: any) {
       setErrorMsg(formatSupabaseError(err));
@@ -79,13 +79,14 @@ export const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-purple-950/70 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-purple-100 overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#080312]/80 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="relative w-full max-w-lg bg-[#140827] text-slate-100 rounded-3xl shadow-2xl border border-purple-800/60 overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="bg-gradient-to-r from-rose-950 via-rose-900 to-purple-950 p-6 text-white text-left relative">
+        <div className="bg-gradient-to-r from-rose-950 via-rose-900 to-purple-950 p-6 text-white text-left relative border-b border-rose-800/40 shrink-0">
           <button
             onClick={onClose}
             className="absolute top-4 right-4 p-1.5 text-rose-200 hover:text-white rounded-full hover:bg-white/10 transition"
+            title="Funga"
           >
             <X className="w-5 h-5" />
           </button>
@@ -97,61 +98,65 @@ export const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
           <h2 className="font-serif font-bold text-xl text-white">
             Rekodi Gharama / Matumizi ya Huduma
           </h2>
-          <p className="text-xs text-rose-200 mt-0.5">
-            Jopo la Utawala • Usimamizi thabiti wa fedha na uwazi
+          <p className="text-xs text-rose-200/90 mt-0.5">
+            Dhibiti na fuatilia matumizi ya hazina ya kanisa kwa uwazi na stakabadhi.
           </p>
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
           {errorMsg && (
-            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2">
-              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-              <span>{errorMsg}</span>
+            <div className="p-3.5 rounded-xl bg-rose-950/80 border border-rose-600/60 text-rose-200 text-xs flex items-start gap-2.5">
+              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+              <span className="leading-relaxed">{errorMsg}</span>
             </div>
           )}
 
+          {/* Title */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
-              Kichwa / Kusudi la Matumizi *
+            <label className="block text-xs font-bold text-purple-200 mb-1.5">
+              Jina / Maelezo ya Gharama *
             </label>
             <input
               type="text"
               required
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="mfano: Ununuzi wa Kebo na Maikrofoni za Madhabahuni"
-              className="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-rose-600 focus:border-transparent outline-hidden"
+              placeholder="mfano: Malipo ya Umeme na Maji ya Hekalu Kuu"
+              className="w-full px-3.5 py-2.5 text-sm bg-[#1c0f33] text-white border border-purple-700/60 rounded-xl focus:border-rose-400 focus:ring-1 focus:ring-rose-400 outline-hidden placeholder-purple-300/40 font-medium"
             />
           </div>
 
+          {/* Category */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
-              Kategoria ya Matumizi *
+            <label className="block text-xs font-bold text-purple-200 mb-1.5">
+              Kategoria ya Gharama *
             </label>
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value as ExpenseCategory)}
-              className="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-rose-600 focus:border-transparent outline-hidden bg-white"
-            >
-              <option value="Uendeshaji wa Huduma">Uendeshaji wa Huduma</option>
-              <option value="Uinjilisti & Safari za Misheni">Uinjilisti & Safari za Misheni</option>
-              <option value="Vifaa vya Sauti & Muziki">Vifaa vya Sauti & Muziki</option>
-              <option value="Misaada ya Kijamii & Yatima">Misaada ya Kijamii & Yatima</option>
-              <option value="Ujenzi & Ukarabati wa Kanisa">Ujenzi & Ukarabati wa Kanisa</option>
-              <option value="Maji, Umeme & Pango">Maji, Umeme & Pango</option>
-              <option value="Semina & Mikutano ya Injili">Semina & Mikutano ya Injili</option>
-              <option value="Gharama za Utawala">Gharama za Utawala</option>
-              <option value="Mengineyo">Mengineyo</option>
-            </select>
+            <div className="relative">
+              <Tag className="w-4 h-4 text-purple-400 absolute left-3 top-3 pointer-events-none" />
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value as ExpenseCategory)}
+                className="w-full pl-9 pr-3 py-2.5 text-sm bg-[#1c0f33] text-white border border-purple-700/60 rounded-xl focus:border-rose-400 focus:ring-1 focus:ring-rose-400 outline-hidden font-medium"
+              >
+                <option value="Ujenzi & Ukarabati" className="bg-[#140827] text-white">Ujenzi & Ukarabati wa Majengo</option>
+                <option value="Uinjilisti & Mikutano" className="bg-[#140827] text-white">Uinjilisti & Mikutano ya Hadhara</option>
+                <option value="Vyombo & Mifumo ya Sauti" className="bg-[#140827] text-white">Vyombo vya Muziki & Mifumo ya Sauti</option>
+                <option value="Huduma ya Jamii & Misaada" className="bg-[#140827] text-white">Huduma ya Jamii & Misaada ya Yatima</option>
+                <option value="Uendeshaji wa Huduma" className="bg-[#140827] text-white">Uendeshaji wa Kila Siku (Umeme, Maji, n.k.)</option>
+                <option value="Usafiri & Mafuta" className="bg-[#140827] text-white">Usafiri wa Watumishi & Mafuta ya Magari</option>
+                <option value="Gharama Nyingine" className="bg-[#140827] text-white">Gharama Nyinginezo Maalum</option>
+              </select>
+            </div>
           </div>
 
+          {/* Amount */}
           <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-bold text-slate-700">
-                Kiasi cha Matumizi (TZS) *
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-bold text-purple-200">
+                Kiasi Kilichotumika (TZS) *
               </label>
-              <span className="text-xs font-bold text-rose-800">
+              <span className="text-xs font-bold text-rose-300">
                 {formatTZS(parseInt(amount || '0', 10))}
               </span>
             </div>
@@ -162,19 +167,19 @@ export const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
               required
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              className="w-full px-3 py-2 text-base font-semibold border border-slate-300 rounded-xl focus:ring-2 focus:ring-rose-600 focus:border-transparent outline-hidden text-slate-900"
+              className="w-full px-3.5 py-2.5 text-base font-bold bg-[#1c0f33] text-rose-300 border border-purple-700/60 rounded-xl focus:border-rose-400 focus:ring-1 focus:ring-rose-400 outline-hidden"
             />
 
-            <div className="flex flex-wrap gap-1.5 mt-2">
+            <div className="flex flex-wrap gap-1.5 mt-2.5">
               {presetAmounts.map((amt) => (
                 <button
                   type="button"
                   key={amt}
                   onClick={() => setAmount(String(amt))}
-                  className={`px-2.5 py-1 text-xs rounded-lg font-medium transition ${
+                  className={`px-2.5 py-1 text-xs rounded-lg font-semibold transition ${
                     amount === String(amt)
-                      ? 'bg-rose-900 text-rose-100 font-bold'
-                      : 'bg-slate-100 hover:bg-rose-50 text-slate-700'
+                      ? 'bg-rose-600 text-white font-bold shadow-xs'
+                      : 'bg-[#1c0f33] hover:bg-purple-900/60 text-purple-200 border border-purple-700/40'
                   }`}
                 >
                   {formatTZS(amt)}
@@ -183,70 +188,82 @@ export const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* Date & Receipt Reference */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                Tarehe ya Matumizi *
+              <label className="block text-xs font-bold text-purple-200 mb-1.5">
+                Tarehe ya Gharama *
               </label>
               <div className="relative">
-                <Calendar className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                <Calendar className="w-4 h-4 text-purple-400 absolute left-3 top-3 pointer-events-none" />
                 <input
                   type="date"
                   required
                   value={expenseDate}
                   onChange={(e) => setExpenseDate(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-rose-600 focus:border-transparent outline-hidden"
+                  className="w-full pl-9 pr-3 py-2.5 text-sm bg-[#1c0f33] text-white border border-purple-700/60 rounded-xl focus:border-rose-400 focus:ring-1 focus:ring-rose-400 outline-hidden font-medium"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                Namba ya Risiti / Vocha
+              <label className="block text-xs font-bold text-purple-200 mb-1.5">
+                Namba ya Vocha / Risiti ya Muuzaji
               </label>
               <input
                 type="text"
                 value={receiptRef}
                 onChange={(e) => setReceiptRef(e.target.value)}
-                placeholder="mfano: VCH-9941"
-                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-rose-600 focus:border-transparent outline-hidden"
+                placeholder="mfano: REC-9921 au EFD..."
+                className="w-full px-3.5 py-2.5 text-sm bg-[#1c0f33] text-white border border-purple-700/60 rounded-xl focus:border-rose-400 focus:ring-1 focus:ring-rose-400 outline-hidden placeholder-purple-300/40 font-mono"
               />
             </div>
           </div>
 
+          {/* Description */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
+            <label className="block text-xs font-bold text-purple-200 mb-1.5">
               Maelezo ya Ziada (Hiari)
             </label>
             <div className="relative">
-              <FileText className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+              <FileText className="w-4 h-4 text-purple-400 absolute left-3 top-3 pointer-events-none" />
               <textarea
                 rows={2}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Maelezo ya stakabadhi au walipwaji..."
-                className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-rose-600 focus:border-transparent outline-hidden"
+                placeholder="mfano: Vifaa hivi vilinunuliwa Kariakoo kwa ajili ya awamu ya kwanza..."
+                className="w-full pl-9 pr-3 py-2.5 text-sm bg-[#1c0f33] text-white border border-purple-700/60 rounded-xl focus:border-rose-400 focus:ring-1 focus:ring-rose-400 outline-hidden placeholder-purple-300/40 font-medium"
               />
             </div>
           </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full mt-3 py-3 px-4 rounded-xl bg-gradient-to-r from-rose-800 to-rose-700 text-white font-bold text-sm hover:from-rose-700 hover:to-rose-600 transition flex items-center justify-center gap-2 shadow-md disabled:opacity-60"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin text-white" />
-                <span>Inahifadhiwa kwenye Supabase...</span>
-              </>
-            ) : (
-              <>
-                <CheckCircle2 className="w-4 h-4 text-white" />
-                <span>Hifadhi Rekodi ya Matumizi</span>
-              </>
-            )}
-          </button>
+          {/* Buttons: Cancel & Submit */}
+          <div className="pt-2 flex items-center justify-end gap-3 border-t border-purple-800/40 mt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2.5 rounded-xl bg-purple-950/80 hover:bg-purple-900 text-purple-200 font-semibold text-xs border border-purple-700/50 transition"
+            >
+              Ghairi
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 sm:flex-none px-6 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 via-rose-500 to-rose-600 text-white font-bold text-xs hover:from-rose-500 hover:to-rose-400 transition flex items-center justify-center gap-2 shadow-lg disabled:opacity-60"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-white" />
+                  <span>Inarekodiwa...</span>
+                </>
+              ) : (
+                <>
+                  <TrendingDown className="w-4 h-4 text-white" />
+                  <span>Rekodi Gharama ya Hazina</span>
+                </>
+              )}
+            </button>
+          </div>
         </form>
       </div>
     </div>

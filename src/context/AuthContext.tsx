@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useMemo } from 'react';
+import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured, formatSupabaseError } from '../lib/supabase';
 import { Profile, UserRole, PartnerCategory } from '../types/database.types';
@@ -168,7 +168,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [user]);
 
-  const signIn = async (email: string, password: string) => {
+  const clearAuthError = useCallback(() => setAuthError(null), []);
+
+  const signIn = useCallback(async (email: string, password: string) => {
     setAuthError(null);
     if (!isSupabaseConfigured) {
       const err = 'Supabase haijaunganishwa bado. Tafadhali sanidi VITE_SUPABASE_URL na VITE_SUPABASE_ANON_KEY.';
@@ -198,9 +200,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setAuthError(msg);
       return { success: false, error: msg };
     }
-  };
+  }, []);
 
-  const signUp = async ({
+  const signUp = useCallback(async ({
     email,
     password,
     fullName,
@@ -258,9 +260,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setAuthError(msg);
       return { success: false, error: msg };
     }
-  };
+  }, []);
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     try {
       await supabase.auth.signOut();
       setUser(null);
@@ -269,35 +271,50 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (err) {
       console.error('Hitilafu wakati wa kutoka:', err);
     }
-  };
+  }, []);
 
-  const refreshProfile = async () => {
+  const refreshProfile = useCallback(async () => {
     if (user) {
       await fetchProfile(user.id, user.email, user.user_metadata);
     }
-  };
+  }, [user]);
 
   const isAdmin = useMemo(() => {
     return profile?.role === 'admin';
-  }, [profile]);
+  }, [profile?.role]);
+
+  const value = useMemo(
+    () => ({
+      user,
+      profile,
+      session,
+      loading,
+      isAdmin,
+      isConfigured: isSupabaseConfigured,
+      authError,
+      clearAuthError,
+      signIn,
+      signUp,
+      signOut,
+      refreshProfile,
+    }),
+    [
+      user,
+      profile,
+      session,
+      loading,
+      isAdmin,
+      authError,
+      clearAuthError,
+      signIn,
+      signUp,
+      signOut,
+      refreshProfile,
+    ]
+  );
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        profile,
-        session,
-        loading,
-        isAdmin,
-        isConfigured: isSupabaseConfigured,
-        authError,
-        clearAuthError: () => setAuthError(null),
-        signIn,
-        signUp,
-        signOut,
-        refreshProfile,
-      }}
-    >
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

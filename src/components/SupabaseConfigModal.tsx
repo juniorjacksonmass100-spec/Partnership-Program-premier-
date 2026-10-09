@@ -15,9 +15,9 @@ import {
   Copy, 
   Check, 
   Loader2, 
-  Code2, 
-  Terminal, 
-  ExternalLink 
+  ExternalLink,
+  HelpCircle,
+  Sparkles
 } from 'lucide-react';
 
 interface SupabaseConfigModalProps {
@@ -29,7 +29,7 @@ export const SupabaseConfigModal: React.FC<SupabaseConfigModalProps> = ({ isOpen
   const currentConfig = getSupabaseConfig();
   const [url, setUrl] = useState(currentConfig.url);
   const [anonKey, setAnonKey] = useState(currentConfig.anonKey);
-  const [activeTab, setActiveTab] = useState<'config' | 'sql' | 'steps'>('config');
+  const [activeTab, setActiveTab] = useState<'config' | 'sql' | 'steps' | 'why_data_issue'>('config');
 
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string; tablesFound?: boolean } | null>(null);
@@ -157,6 +157,24 @@ CREATE TABLE IF NOT EXISTS public.contributions (
 CREATE INDEX IF NOT EXISTS idx_contributions_user_id ON public.contributions(user_id);
 CREATE INDEX IF NOT EXISTS idx_contributions_pledge_id ON public.contributions(pledge_id);
 
+-- Foreign Key Constraints for PostgREST profiles embedding
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'fk_pledges_profiles'
+    ) THEN
+        ALTER TABLE public.pledges 
+        ADD CONSTRAINT fk_pledges_profiles FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'fk_contributions_profiles'
+    ) THEN
+        ALTER TABLE public.contributions 
+        ADD CONSTRAINT fk_contributions_profiles FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+    END IF;
+END $$;
+
 -- 4. Expenses Table
 CREATE TABLE IF NOT EXISTS public.expenses (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -171,7 +189,7 @@ CREATE TABLE IF NOT EXISTS public.expenses (
     created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
 
--- 5. Ministry News Table (Habari za Huduma)
+-- 5. Ministry News Table
 CREATE TABLE IF NOT EXISTS public.ministry_news (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title TEXT NOT NULL,
@@ -183,7 +201,7 @@ CREATE TABLE IF NOT EXISTS public.ministry_news (
     created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
 
--- 6. Testimonials Table (Shuhuda za Washirika)
+-- 6. Testimonials Table
 CREATE TABLE IF NOT EXISTS public.testimonials (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -196,13 +214,39 @@ CREATE TABLE IF NOT EXISTS public.testimonials (
     created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
 
--- 7. Row Level Security (RLS)
+-- 7. Direct Messages Table
+CREATE TABLE IF NOT EXISTS public.messages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    sender_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    receiver_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    sender_name TEXT NOT NULL,
+    sender_role TEXT NOT NULL DEFAULT 'partner',
+    message TEXT NOT NULL,
+    is_read BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+-- 8. Notifications Table
+CREATE TABLE IF NOT EXISTS public.notifications (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    message TEXT NOT NULL,
+    type TEXT NOT NULL DEFAULT 'system',
+    link TEXT,
+    is_read BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+-- 9. Row Level Security (RLS)
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.pledges ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.contributions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.expenses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ministry_news ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.testimonials ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 
 -- Profiles Policies
 DROP POLICY IF EXISTS "Profiles are readable by owner or admin" ON public.profiles;
@@ -235,8 +279,10 @@ DROP POLICY IF EXISTS "Users can record own contribution, admins can record for 
 CREATE POLICY "Users can record own contribution, admins can record for anyone" ON public.contributions FOR INSERT WITH CHECK (auth.uid() = user_id OR public.is_admin());
 
 DROP POLICY IF EXISTS "Admins can update or delete contributions" ON public.contributions;
-CREATE POLICY "Admins can update or delete contributions" ON public.contributions FOR UPDATE USING (public.is_admin());
+DROP POLICY IF EXISTS "Admins can update contributions" ON public.contributions;
+CREATE POLICY "Admins can update contributions" ON public.contributions FOR UPDATE USING (public.is_admin());
 
+DROP POLICY IF EXISTS "Admins can delete contributions" ON public.contributions;
 CREATE POLICY "Admins can delete contributions" ON public.contributions FOR DELETE USING (public.is_admin());
 
 -- Expenses Policies
@@ -263,7 +309,33 @@ CREATE POLICY "Users can submit testimonials" ON public.testimonials FOR INSERT 
 DROP POLICY IF EXISTS "Admins manage all testimonials" ON public.testimonials;
 CREATE POLICY "Admins manage all testimonials" ON public.testimonials FOR ALL USING (public.is_admin());
 
--- 8. Enable Realtime Publications
+-- Messages Policies
+DROP POLICY IF EXISTS "Users can view own messages or admins view all" ON public.messages;
+CREATE POLICY "Users can view own messages or admins view all" ON public.messages FOR SELECT USING (auth.uid() = sender_id OR auth.uid() = receiver_id OR public.is_admin());
+
+DROP POLICY IF EXISTS "Users and admins can send messages" ON public.messages;
+CREATE POLICY "Users and admins can send messages" ON public.messages FOR INSERT WITH CHECK (auth.uid() = sender_id OR public.is_admin());
+
+DROP POLICY IF EXISTS "Users and admins can update messages" ON public.messages;
+CREATE POLICY "Users and admins can update messages" ON public.messages FOR UPDATE USING (auth.uid() = sender_id OR auth.uid() = receiver_id OR public.is_admin());
+
+DROP POLICY IF EXISTS "Admins can delete messages" ON public.messages;
+CREATE POLICY "Admins can delete messages" ON public.messages FOR DELETE USING (public.is_admin());
+
+-- Notifications Policies
+DROP POLICY IF EXISTS "Users view own or broadcast notifications" ON public.notifications;
+CREATE POLICY "Users view own or broadcast notifications" ON public.notifications FOR SELECT USING (user_id IS NULL OR auth.uid() = user_id OR public.is_admin());
+
+DROP POLICY IF EXISTS "Admins can insert notifications" ON public.notifications;
+CREATE POLICY "Admins can insert notifications" ON public.notifications FOR INSERT WITH CHECK (public.is_admin());
+
+DROP POLICY IF EXISTS "Users can mark own notifications as read" ON public.notifications;
+CREATE POLICY "Users can mark own notifications as read" ON public.notifications FOR UPDATE USING (user_id IS NULL OR auth.uid() = user_id OR public.is_admin());
+
+DROP POLICY IF EXISTS "Admins can delete notifications" ON public.notifications;
+CREATE POLICY "Admins can delete notifications" ON public.notifications FOR DELETE USING (public.is_admin());
+
+-- Realtime publication
 DO $$
 BEGIN
     BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.profiles; EXCEPTION WHEN duplicate_object THEN NULL; END;
@@ -272,23 +344,26 @@ BEGIN
     BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.expenses; EXCEPTION WHEN duplicate_object THEN NULL; END;
     BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.ministry_news; EXCEPTION WHEN duplicate_object THEN NULL; END;
     BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.testimonials; EXCEPTION WHEN duplicate_object THEN NULL; END;
+    BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.messages; EXCEPTION WHEN duplicate_object THEN NULL; END;
+    BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications; EXCEPTION WHEN duplicate_object THEN NULL; END;
 END $$;
 `;
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(sqlScript);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2500);
+    setTimeout(() => setCopied(false), 3000);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-purple-950/75 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-purple-200 overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#080312]/80 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="relative w-full max-w-3xl bg-[#140827] text-slate-100 rounded-3xl shadow-2xl border border-purple-800/60 overflow-hidden flex flex-col max-h-[92vh]">
         {/* Header */}
-        <div className="bg-gradient-to-r from-purple-950 via-purple-900 to-indigo-950 p-6 text-white relative">
+        <div className="bg-gradient-to-r from-purple-950 via-purple-900 to-indigo-950 p-6 text-white text-left relative border-b border-purple-800/50 shrink-0">
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 p-1.5 text-purple-200 hover:text-white rounded-full hover:bg-white/10 transition"
+            className="absolute top-4 right-4 p-1.5 text-purple-300 hover:text-white rounded-full hover:bg-white/10 transition"
+            title="Funga"
           >
             <X className="w-5 h-5" />
           </button>
@@ -296,28 +371,28 @@ END $$;
           <div className="flex items-center gap-2 mb-1">
             <Database className="w-5 h-5 text-amber-400" />
             <h2 className="font-serif font-bold text-xl text-white">
-              Mipangilio ya Supabase PostgreSQL & Auth
+              Kusanidi Supabase (Database & Realtime)
             </h2>
           </div>
-          <p className="text-xs text-purple-200">
-            Jukwaa hili linatumia Supabase kama Chanzo Kikuu cha Ukweli (Single Source of Truth)
+          <p className="text-xs text-purple-200/90">
+            Unganisha na database ya Supabase ili kuhifadhi ahadi, sadaka, na washirika moja kwa moja.
           </p>
 
           {/* Navigation Tabs */}
-          <div className="flex p-1 bg-purple-900/60 rounded-xl mt-4 border border-purple-700/50">
+          <div className="flex flex-wrap p-1 bg-[#120722] rounded-xl mt-4 border border-purple-800/50 gap-1">
             <button
               onClick={() => setActiveTab('config')}
-              className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition ${
+              className={`flex-1 min-w-[120px] py-1.5 px-2 text-xs font-bold rounded-lg transition ${
                 activeTab === 'config'
                   ? 'bg-amber-400 text-purple-950 shadow-xs'
                   : 'text-purple-200 hover:text-white'
               }`}
             >
-              Vigezo vya Muunganisho (URL & Key)
+              Vigezo (URL & Key)
             </button>
             <button
               onClick={() => setActiveTab('sql')}
-              className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition ${
+              className={`flex-1 min-w-[120px] py-1.5 px-2 text-xs font-bold rounded-lg transition ${
                 activeTab === 'sql'
                   ? 'bg-amber-400 text-purple-950 shadow-xs'
                   : 'text-purple-200 hover:text-white'
@@ -326,36 +401,46 @@ END $$;
               SQL Script ya Majedwali
             </button>
             <button
+              onClick={() => setActiveTab('why_data_issue')}
+              className={`flex-1 min-w-[140px] py-1.5 px-2 text-xs font-bold rounded-lg transition ${
+                activeTab === 'why_data_issue'
+                  ? 'bg-amber-400 text-purple-950 shadow-xs'
+                  : 'text-purple-200 hover:text-white'
+              }`}
+            >
+              Kuhusu Ahadi & Michango
+            </button>
+            <button
               onClick={() => setActiveTab('steps')}
-              className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition ${
+              className={`flex-1 min-w-[120px] py-1.5 px-2 text-xs font-bold rounded-lg transition ${
                 activeTab === 'steps'
                   ? 'bg-amber-400 text-purple-950 shadow-xs'
                   : 'text-purple-200 hover:text-white'
               }`}
             >
-              Mwongozo wa Hatua
+              Hatua za Kufuata
             </button>
           </div>
         </div>
 
         {/* Tab Content */}
-        <div className="p-6 overflow-y-auto flex-1 text-slate-800">
+        <div className="p-6 overflow-y-auto flex-1">
           {activeTab === 'config' && (
             <div className="space-y-4">
-              <div className="p-3.5 rounded-xl bg-purple-50 border border-purple-200 text-purple-950 text-xs">
-                <span className="font-bold block mb-1">Chanzo cha Vigezo:</span>
+              <div className="p-3.5 rounded-xl bg-[#1b0e32] border border-purple-700/60 text-xs">
+                <span className="font-bold text-amber-300 block mb-1">Chanzo cha Vigezo:</span>
                 <p>
                   {currentConfig.isFromEnv ? (
-                    <span className="text-emerald-700 font-semibold">
-                      ✓ Vigezo vimesomwa kutoka kwenye faili la mazingira (.env au Vercel environment variables).
+                    <span className="text-emerald-400 font-semibold">
+                      ✓ Vigezo vimesomwa moja kwa moja kutoka faili la mazingira (.env au Vercel environment variables).
                     </span>
                   ) : currentConfig.url ? (
-                    <span className="text-amber-700 font-semibold">
-                      ⚡ Vigezo vimehifadhiwa kwenye kumbukumbu ya kikao (session runtime). Unaweza pia kuviweka kwenye .env.
+                    <span className="text-amber-300 font-semibold">
+                      ⚡ Vigezo vimehifadhiwa kwenye kumbukumbu ya kikao cha kivinjari (session storage).
                     </span>
                   ) : (
-                    <span className="text-rose-700 font-semibold">
-                      ✗ Vigezo havijawekwa bado. Ingiza URL na Anon Key hapa chini au weka kwenye .env.
+                    <span className="text-rose-400 font-semibold">
+                      ✗ Vigezo havijawekwa bado. Ingiza URL na Anon Key hapa chini ili kuanza kuhifadhi taarifa kwenye Supabase.
                     </span>
                   )}
                 </p>
@@ -363,43 +448,43 @@ END $$;
 
               <form onSubmit={handleSave} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label className="block text-xs font-bold text-purple-200 mb-1.5">
                     VITE_SUPABASE_URL *
                   </label>
                   <div className="relative">
-                    <Globe className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                    <Globe className="w-4 h-4 text-purple-400 absolute left-3 top-3 pointer-events-none" />
                     <input
                       type="url"
                       required
                       placeholder="https://xyzproject.supabase.co"
                       value={url}
                       onChange={(e) => setUrl(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-purple-600 focus:border-transparent outline-hidden font-mono text-xs"
+                      className="w-full pl-9 pr-3 py-2.5 text-sm bg-[#1c0f33] text-white border border-purple-700/60 rounded-xl focus:border-amber-400 focus:ring-1 focus:ring-amber-400 outline-hidden font-mono text-xs"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label className="block text-xs font-bold text-purple-200 mb-1.5">
                     VITE_SUPABASE_ANON_KEY (Public / Anon Key) *
                   </label>
                   <div className="relative">
-                    <Key className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                    <Key className="w-4 h-4 text-purple-400 absolute left-3 top-3 pointer-events-none" />
                     <textarea
                       rows={3}
                       required
                       placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
                       value={anonKey}
                       onChange={(e) => setAnonKey(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-purple-600 focus:border-transparent outline-hidden font-mono"
+                      className="w-full pl-9 pr-3 py-2.5 text-xs bg-[#1c0f33] text-white border border-purple-700/60 rounded-xl focus:border-amber-400 focus:ring-1 focus:ring-amber-400 outline-hidden font-mono"
                     />
                   </div>
                 </div>
 
-                <div className="flex flex-wrap gap-3 pt-2">
+                <div className="flex flex-wrap gap-2.5 pt-2">
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-purple-900 text-amber-300 rounded-xl text-xs font-bold hover:bg-purple-800 transition shadow-xs"
+                    className="px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 text-purple-950 font-bold text-xs rounded-xl hover:from-amber-400 hover:to-amber-500 transition shadow-md"
                   >
                     Hifadhi Vigezo vya Supabase
                   </button>
@@ -407,7 +492,7 @@ END $$;
                     type="button"
                     onClick={handleTest}
                     disabled={testing}
-                    className="px-4 py-2 bg-emerald-700 text-white rounded-xl text-xs font-bold hover:bg-emerald-600 transition flex items-center gap-1.5 shadow-xs disabled:opacity-60"
+                    className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-500 transition flex items-center gap-1.5 shadow-md disabled:opacity-60"
                   >
                     {testing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
                     <span>Jaribu Muunganisho (Test)</span>
@@ -416,9 +501,9 @@ END $$;
                     <button
                       type="button"
                       onClick={clearRuntimeConfig}
-                      className="px-3 py-2 bg-rose-50 text-rose-700 border border-rose-200 rounded-xl text-xs font-semibold hover:bg-rose-100 transition"
+                      className="px-3 py-2 bg-rose-950/70 text-rose-300 border border-rose-700/60 rounded-xl text-xs font-semibold hover:bg-rose-900 transition"
                     >
-                      Futa Vigezo vya Kikao
+                      Futa Vigezo
                     </button>
                   )}
                 </div>
@@ -426,115 +511,163 @@ END $$;
 
               {testResult && (
                 <div
-                  className={`p-3.5 rounded-xl text-xs flex items-start gap-2.5 ${
+                  className={`p-3.5 rounded-xl text-xs flex items-start gap-2.5 border ${
                     testResult.success
-                      ? 'bg-emerald-50 text-emerald-900 border border-emerald-300'
-                      : 'bg-rose-50 text-rose-900 border border-rose-300'
+                      ? 'bg-emerald-950/80 text-emerald-200 border-emerald-600/60'
+                      : 'bg-rose-950/80 text-rose-200 border-rose-600/60'
                   }`}
                 >
                   {testResult.success ? (
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                   ) : (
-                    <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                    <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
                   )}
                   <div>
                     <span className="font-bold block">
-                      {testResult.success ? 'Muunganisho Umethibitishwa' : 'Hitilafu ya Muunganisho'}
+                      {testResult.success ? 'Muunganisho Umefanikiwa!' : 'Hitilafu ya Muunganisho'}
                     </span>
-                    <p>{testResult.message}</p>
+                    <p className="mt-0.5 leading-relaxed">{testResult.message}</p>
                   </div>
                 </div>
               )}
             </div>
           )}
 
+          {activeTab === 'why_data_issue' && (
+            <div className="space-y-4 text-xs">
+              <div className="p-4 rounded-2xl bg-amber-950/50 border border-amber-600/50 text-amber-200">
+                <h3 className="text-sm font-bold flex items-center gap-2 text-amber-300 mb-2">
+                  <HelpCircle className="w-4 h-4 text-amber-400" />
+                  Kwanini Ahadi na Michango "Haikubadilika" Baada ya Kuongezwa?
+                </h3>
+                <p className="leading-relaxed mb-3">
+                  Kuna sababu 2 kuu zinazoweza kusababisha ahadi au mchango kuonekana kuwa umeongezwa lakini usionekane kwenye orodha:
+                </p>
+                <div className="space-y-2.5 pl-2">
+                  <div className="p-2.5 rounded-xl bg-[#140827] border border-amber-700/40">
+                    <span className="font-bold text-white block mb-0.5">1. Majedwali ya Supabase (Tables & Foreign Keys) hayajaendeshwa:</span>
+                    <p className="text-amber-100/90 leading-relaxed">
+                      Wakati mfumo unapojaribu kusoma ahadi pamoja na majina ya washirika (profiles), kama jedwali la <code>pledges</code> au <code>contributions</code> halijaundwa kwenye Supabase au halina kiungo na <code>profiles</code>, Supabase inarejesha kosa na kuzuia data kuonekana.
+                    </p>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-[#140827] border border-amber-700/40">
+                    <span className="font-bold text-white block mb-0.5">2. Muunganisho wa Papo Hapo (Instant UI Update umeboreshwa sasa!):</span>
+                    <p className="text-amber-100/90 leading-relaxed">
+                      Sasa tumeweka <strong>sasisho la papo hapo (Instant Optimistic Update)</strong> — mtu anapobofya kuweka ahadi au kurekodi mchango, mfumo unauongeza kwenye skrini mara moja bila kuchelewa, kisha unaiweka salama kwenye Supabase!
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-[#1b0e32] border border-purple-700/60 text-purple-200">
+                <h4 className="font-bold text-amber-300 text-xs uppercase mb-1">
+                  Suluhisho la Uhakika:
+                </h4>
+                <p className="leading-relaxed">
+                  Fungua kichupo cha <strong>"SQL Script ya Majedwali"</strong> hapo juu, bofya kitufe cha <strong>"Nakili SQL Script"</strong>, 
+                  kisha uende kwenye <strong>Supabase Dashboard → SQL Editor</strong>, bandika na ubofye <strong>Run</strong>. Hii itaunda majedwali yote mara moja!
+                </p>
+              </div>
+            </div>
+          )}
+
           {activeTab === 'sql' && (
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                 <div>
-                  <h3 className="text-sm font-bold text-slate-800">
+                  <h3 className="text-sm font-bold text-white">
                     SQL Schema ya Kanzidata ya Supabase
                   </h3>
-                  <p className="text-xs text-slate-500">
-                    Nakili script hii na uibandike kwenye Supabase SQL Editor ili kuunda majedwali, RLS, na Realtime.
+                  <p className="text-xs text-purple-300/80">
+                    Nakili script hii na uibandike kwenye Supabase SQL Editor ili kuunda majedwali yote na RLS.
                   </p>
                 </div>
                 <button
                   onClick={copyToClipboard}
-                  className="px-3 py-1.5 bg-amber-400 hover:bg-amber-300 text-purple-950 font-bold text-xs rounded-lg transition flex items-center gap-1.5 shadow-2xs"
+                  className="px-3.5 py-1.5 bg-amber-400 hover:bg-amber-300 text-purple-950 font-bold text-xs rounded-xl transition flex items-center gap-1.5 shadow-md shrink-0"
                 >
                   {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                   <span>{copied ? 'Imenakiliwa!' : 'Nakili SQL Script'}</span>
                 </button>
               </div>
 
-              <div className="relative rounded-xl overflow-hidden border border-slate-700 bg-slate-950 p-4 font-mono text-[11px] text-emerald-400 max-h-80 overflow-y-auto">
+              <div className="relative rounded-2xl overflow-hidden border border-purple-700/60 bg-[#0d0517] p-4 font-mono text-[11px] text-emerald-400 max-h-80 overflow-y-auto">
                 <pre>{sqlScript}</pre>
               </div>
             </div>
           )}
 
           {activeTab === 'steps' && (
-            <div className="space-y-4 text-xs">
-              <h3 className="text-sm font-bold text-purple-950">
+            <div className="space-y-3 text-xs">
+              <h3 className="text-sm font-bold text-amber-300 mb-2">
                 Mwongozo wa Haraka wa Kusanidi Supabase kwa Dakika 3:
               </h3>
 
               <div className="space-y-3">
-                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-                  <div className="font-bold text-slate-900 flex items-center gap-1.5">
-                    <span className="w-5 h-5 rounded-full bg-purple-900 text-amber-300 flex items-center justify-center text-xs">1</span>
-                    Fungua Akaunti na Mradi Mpya Supabase
+                <div className="p-3.5 rounded-xl bg-[#1b0e32] border border-purple-700/60">
+                  <div className="font-bold text-white flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-full bg-amber-400 text-purple-950 flex items-center justify-center text-xs font-black">1</span>
+                    Fungua Mradi Kwenye Supabase
                   </div>
-                  <p className="text-slate-600 mt-1 pl-6">
+                  <p className="text-purple-200/80 mt-1 pl-7 leading-relaxed">
                     Tembelea{' '}
                     <a
                       href="https://supabase.com"
                       target="_blank"
                       rel="noreferrer"
-                      className="text-purple-700 font-semibold underline inline-flex items-center gap-0.5"
+                      className="text-amber-300 font-semibold underline inline-flex items-center gap-0.5"
                     >
                       supabase.com <ExternalLink className="w-3 h-3" />
                     </a>{' '}
-                    na uunde mradi mpya (New Project) unaoitwa mfano <code>jerusalem-ministry</code>.
+                    kisha uunde mradi mpya bila malipo.
                   </p>
                 </div>
 
-                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-                  <div className="font-bold text-slate-900 flex items-center gap-1.5">
-                    <span className="w-5 h-5 rounded-full bg-purple-900 text-amber-300 flex items-center justify-center text-xs">2</span>
-                    Tekeleza SQL Script
+                <div className="p-3.5 rounded-xl bg-[#1b0e32] border border-purple-700/60">
+                  <div className="font-bold text-white flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-full bg-amber-400 text-purple-950 flex items-center justify-center text-xs font-black">2</span>
+                    Tekeleza SQL Script Kwenye SQL Editor
                   </div>
-                  <p className="text-slate-600 mt-1 pl-6">
-                    Kwenye dashibodi ya Supabase, bofya <strong>SQL Editor</strong>, kisha tengeneza query mpya, 
-                    bandika script kutoka kwenye kichupo cha "SQL Script ya Majedwali" hapo juu, na ubofye <strong>Run</strong>.
+                  <p className="text-purple-200/80 mt-1 pl-7 leading-relaxed">
+                    Kwenye menyu ya kushoto ya Supabase, bofya <strong>SQL Editor</strong>, tengeneza query mpya, 
+                    bandika script kutoka kwenye kichupo cha "SQL Script ya Majedwali" hapo juu, kisha ubofye <strong>Run</strong>.
                   </p>
                 </div>
 
-                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-                  <div className="font-bold text-slate-900 flex items-center gap-1.5">
-                    <span className="w-5 h-5 rounded-full bg-purple-900 text-amber-300 flex items-center justify-center text-xs">3</span>
-                    Weka Vigezo vya Mazingira (.env)
+                <div className="p-3.5 rounded-xl bg-[#1b0e32] border border-purple-700/60">
+                  <div className="font-bold text-white flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-full bg-amber-400 text-purple-950 flex items-center justify-center text-xs font-black">3</span>
+                    Weka URL na Anon Key
                   </div>
-                  <p className="text-slate-600 mt-1 pl-6">
-                    Nenda kwenye <strong>Project Settings → API</strong>. Nakili <code>Project URL</code> na <code>anon public key</code>, 
-                    kisha weka kwenye faili la <code>.env</code> kama <code>VITE_SUPABASE_URL</code> na <code>VITE_SUPABASE_ANON_KEY</code>.
+                  <p className="text-purple-200/80 mt-1 pl-7 leading-relaxed">
+                    Nenda <strong>Project Settings → API</strong>. Nakili <code>Project URL</code> na <code>anon public key</code>, 
+                    kisha weka kwenye kichupo cha "Vigezo (URL & Key)" au kwenye Vercel/faili la <code>.env</code>.
                   </p>
                 </div>
 
-                <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900">
-                  <div className="font-bold flex items-center gap-1.5">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    Uongozi wa Kwanza (First Admin Setup):
+                <div className="p-3.5 rounded-xl bg-emerald-950/70 border border-emerald-600/50 text-emerald-200">
+                  <div className="font-bold flex items-center gap-1.5 text-emerald-300">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    Msimamizi wa Kwanza (First Admin Setup):
                   </div>
-                  <p className="mt-1">
-                    Mtumiaji wa kwanza kabisa atakayejisajili kwenye mfumo hupewa hadhi ya <strong>Msimamizi Mkuu (Admin)</strong> kiotomatiki 
-                    kupitia trigger ya database! Watumiaji wengine watakuwa Washirika wa kawaida isipokuwa Msimamizi awapandishe hadhi.
+                  <p className="mt-1 pl-5 text-[11px] leading-relaxed">
+                    Mtumiaji wa kwanza atakayejisajili anapewa hadhi ya <strong>Msimamizi Mkuu (Admin)</strong> kiotomatiki 
+                    na anaweza kuona taarifa za washirika wote na rekodi za hazina!
                   </p>
                 </div>
               </div>
             </div>
           )}
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 bg-[#120722] border-t border-purple-800/40 flex justify-end shrink-0">
+          <button
+            onClick={onClose}
+            className="px-5 py-2 rounded-xl bg-purple-950 hover:bg-purple-900 text-purple-200 font-semibold text-xs border border-purple-700/50 transition"
+          >
+            Funga
+          </button>
         </div>
       </div>
     </div>

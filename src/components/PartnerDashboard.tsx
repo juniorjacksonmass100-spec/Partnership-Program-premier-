@@ -24,7 +24,9 @@ import {
   Radio,
   Flame,
   ChevronRight,
-  ChevronLeft
+  ChevronLeft,
+  Search,
+  MessageSquare
 } from 'lucide-react';
 
 interface PartnerDashboardProps {
@@ -35,6 +37,7 @@ interface PartnerDashboardProps {
   onOpenContributionModal: (pledgeId?: string) => void;
   onViewReceipt: (contribution: Contribution) => void;
   onOpenTestimonialModal?: () => void;
+  onOpenMessages?: () => void;
   currentSubTab?: 'overview' | 'pledges' | 'contributions' | 'reports';
   newsList?: MinistryNews[];
 }
@@ -47,6 +50,7 @@ export const PartnerDashboard: React.FC<PartnerDashboardProps> = ({
   onOpenContributionModal,
   onViewReceipt,
   onOpenTestimonialModal,
+  onOpenMessages,
   currentSubTab = 'overview',
   newsList = [],
 }) => {
@@ -184,30 +188,40 @@ export const PartnerDashboard: React.FC<PartnerDashboardProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            <button
+              onClick={() => onOpenContributionModal()}
+              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 text-purple-950 font-bold text-xs hover:from-amber-300 hover:to-amber-500 transition flex items-center gap-1.5 shadow-md order-1 sm:order-1"
+            >
+              <Receipt className="w-4 h-4" />
+              <span>Rekodi Sadaka</span>
+            </button>
+            <button
+              onClick={onOpenPledgeModal}
+              className="px-4 py-2.5 rounded-xl bg-purple-900/90 hover:bg-purple-800 text-amber-300 font-bold text-xs border border-purple-600/80 transition flex items-center gap-1.5 shadow-sm order-2 sm:order-2"
+            >
+              <PlusCircle className="w-4 h-4 text-amber-400" />
+              <span>Weka Ahadi Mpya</span>
+            </button>
+            {onOpenMessages && (
+              <button
+                onClick={onOpenMessages}
+                className="px-3.5 py-2.5 rounded-xl bg-[#200e3d] hover:bg-purple-900 text-indigo-300 hover:text-white font-semibold text-xs border border-indigo-600/50 transition flex items-center gap-1.5 shadow-sm order-3 sm:order-3"
+                title="Tuma ujumbe au ombi kwa Mchungaji / Admin"
+              >
+                <MessageSquare className="w-4 h-4 text-indigo-400" />
+                <span>Ujumbe kwa Mchungaji</span>
+              </button>
+            )}
             {onOpenTestimonialModal && (
               <button
                 onClick={onOpenTestimonialModal}
-                className="px-3.5 py-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-bold text-xs border border-amber-400/40 transition flex items-center gap-1.5 shadow-sm"
+                className="px-3.5 py-2.5 rounded-xl bg-purple-950/60 hover:bg-purple-900/60 text-amber-300 font-semibold text-xs border border-purple-700/60 transition flex items-center gap-1.5 shadow-sm order-4 sm:order-4"
                 title="Toa ushuhuda wa kile Mungu amekutendea"
               >
                 <Sparkles className="w-4 h-4 text-amber-400" />
                 <span>Toa Ushuhuda</span>
               </button>
             )}
-            <button
-              onClick={onOpenPledgeModal}
-              className="px-4 py-2.5 rounded-xl bg-purple-800 hover:bg-purple-700 text-amber-300 font-bold text-xs border border-purple-600 transition flex items-center gap-1.5 shadow-sm"
-            >
-              <PlusCircle className="w-4 h-4" />
-              <span>Weka Ahadi Mpya</span>
-            </button>
-            <button
-              onClick={() => onOpenContributionModal()}
-              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 text-purple-950 font-bold text-xs hover:from-amber-300 hover:to-amber-500 transition flex items-center gap-1.5 shadow-md"
-            >
-              <Receipt className="w-4 h-4" />
-              <span>Rekodi Sadaka</span>
-            </button>
           </div>
         </div>
 
@@ -595,13 +609,14 @@ export const PartnerDashboard: React.FC<PartnerDashboardProps> = ({
           </div>
 
           {/* Search bar inside contributions */}
-          <div className="mb-4">
+          <div className="mb-4 relative w-full sm:max-w-md">
+            <Search className="w-4 h-4 text-purple-400 absolute left-3 top-2.5 pointer-events-none" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Tafuta kwa namba ya stakabadhi, kategoria, au njia ya malipo..."
-              className="w-full sm:max-w-md px-3.5 py-2 text-xs border border-purple-800/60 rounded-xl bg-[#1a0e2c] text-slate-100 placeholder-purple-300/50 focus:ring-2 focus:ring-purple-600 outline-hidden"
+              className="w-full pl-9 pr-3.5 py-2 text-xs border border-purple-700/60 rounded-xl bg-[#160a28] text-white placeholder-purple-300/40 focus:border-amber-400 focus:ring-1 focus:ring-amber-400 outline-hidden font-medium"
             />
           </div>
 

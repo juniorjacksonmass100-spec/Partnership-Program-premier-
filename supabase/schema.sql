@@ -150,6 +150,37 @@ CREATE TABLE IF NOT EXISTS public.testimonials (
 
 CREATE INDEX IF NOT EXISTS idx_testimonials_approved ON public.testimonials(is_approved);
 
+-- 9. Direct Messages Table (Ujumbe wa Mawasiliano kati ya Washirika na Admin)
+CREATE TABLE IF NOT EXISTS public.messages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    sender_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    receiver_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    sender_name TEXT NOT NULL,
+    sender_role TEXT NOT NULL DEFAULT 'partner',
+    message TEXT NOT NULL,
+    is_read BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+CREATE INDEX IF NOT EXISTS idx_messages_sender_id ON public.messages(sender_id);
+CREATE INDEX IF NOT EXISTS idx_messages_receiver_id ON public.messages(receiver_id);
+CREATE INDEX IF NOT EXISTS idx_messages_created_at ON public.messages(created_at);
+
+-- 10. Notifications Table (Arifa na Taarifa za Mfumo)
+CREATE TABLE IF NOT EXISTS public.notifications (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    message TEXT NOT NULL,
+    type TEXT NOT NULL DEFAULT 'system',
+    link TEXT,
+    is_read BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON public.notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON public.notifications(is_read);
+
 -- ==============================================================================
 -- ROW LEVEL SECURITY (RLS) POLICIES
 -- Enforce strict data isolation: partners see only their own data, admins see all.
@@ -162,6 +193,8 @@ ALTER TABLE public.contributions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.expenses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ministry_news ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.testimonials ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 
 -- PROFILES POLICIES
 DROP POLICY IF EXISTS "Profiles are readable by owner or admin" ON public.profiles;
@@ -212,10 +245,12 @@ CREATE POLICY "Users can record own contribution, admins can record for anyone"
     WITH CHECK (auth.uid() = user_id OR public.is_admin());
 
 DROP POLICY IF EXISTS "Admins can update or delete contributions" ON public.contributions;
-CREATE POLICY "Admins can update or delete contributions"
+DROP POLICY IF EXISTS "Admins can update contributions" ON public.contributions;
+CREATE POLICY "Admins can update contributions"
     ON public.contributions FOR UPDATE
     USING (public.is_admin());
 
+DROP POLICY IF EXISTS "Admins can delete contributions" ON public.contributions;
 CREATE POLICY "Admins can delete contributions"
     ON public.contributions FOR DELETE
     USING (public.is_admin());
@@ -258,6 +293,68 @@ CREATE POLICY "Admins manage all testimonials"
     ON public.testimonials FOR ALL
     USING (public.is_admin());
 
+-- MESSAGES POLICIES (Users communicate directly with Admin)
+DROP POLICY IF EXISTS "Users can view own messages or admins view all" ON public.messages;
+CREATE POLICY "Users can view own messages or admins view all"
+    ON public.messages FOR SELECT
+    USING (auth.uid() = sender_id OR auth.uid() = receiver_id OR public.is_admin());
+
+DROP POLICY IF EXISTS "Users and admins can send messages" ON public.messages;
+CREATE POLICY "Users and admins can send messages"
+    ON public.messages FOR INSERT
+    WITH CHECK (auth.uid() = sender_id OR public.is_admin());
+
+DROP POLICY IF EXISTS "Users and admins can update messages" ON public.messages;
+CREATE POLICY "Users and admins can update messages"
+    ON public.messages FOR UPDATE
+    USING (auth.uid() = sender_id OR auth.uid() = receiver_id OR public.is_admin());
+
+DROP POLICY IF EXISTS "Admins can delete messages" ON public.messages;
+CREATE POLICY "Admins can delete messages"
+    ON public.messages FOR DELETE
+    USING (public.is_admin());
+
+-- NOTIFICATIONS POLICIES
+DROP POLICY IF EXISTS "Users view own or broadcast notifications" ON public.notifications;
+CREATE POLICY "Users view own or broadcast notifications"
+    ON public.notifications FOR SELECT
+    USING (user_id IS NULL OR auth.uid() = user_id OR public.is_admin());
+
+DROP POLICY IF EXISTS "Admins can insert notifications" ON public.notifications;
+CREATE POLICY "Admins can insert notifications"
+    ON public.notifications FOR INSERT
+    WITH CHECK (public.is_admin());
+
+DROP POLICY IF EXISTS "Users can mark own notifications as read" ON public.notifications;
+CREATE POLICY "Users can mark own notifications as read"
+    ON public.notifications FOR UPDATE
+    USING (user_id IS NULL OR auth.uid() = user_id OR public.is_admin());
+
+DROP POLICY IF EXISTS "Admins can delete notifications" ON public.notifications;
+CREATE POLICY "Admins can delete notifications"
+    ON public.notifications FOR DELETE
+    USING (public.is_admin());
+
+-- ==============================================================================
+-- FOREIGN KEY CONSTRAINTS (Profiles Embedding for PostgREST)
+-- ==============================================================================
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'fk_pledges_profiles'
+    ) THEN
+        ALTER TABLE public.pledges 
+        ADD CONSTRAINT fk_pledges_profiles FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'fk_contributions_profiles'
+    ) THEN
+        ALTER TABLE public.contributions 
+        ADD CONSTRAINT fk_contributions_profiles FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+    END IF;
+END $$;
+
 -- ==============================================================================
 -- REALTIME CONFIGURATION
 -- Enable Supabase Realtime synchronization across all core tables
@@ -286,6 +383,14 @@ BEGIN
     END;
     BEGIN
         ALTER PUBLICATION supabase_realtime ADD TABLE public.testimonials;
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END;
+    BEGIN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END;
+    BEGIN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications;
     EXCEPTION WHEN duplicate_object THEN NULL;
     END;
 END $$;

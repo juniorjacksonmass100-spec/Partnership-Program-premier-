@@ -11,7 +11,9 @@ import {
   PlusCircle, 
   Receipt, 
   BarChart3, 
-  Layers
+  Layers,
+  Bell,
+  MessageSquare
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -22,6 +24,10 @@ interface HeaderProps {
   onOpenPledgeModal: () => void;
   onOpenContributionModal: () => void;
   onOpenSupabaseConfig: () => void;
+  onOpenNotifications?: () => void;
+  onOpenMessages?: () => void;
+  unreadNotificationsCount?: number;
+  unreadMessagesCount?: number;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -32,6 +38,10 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenPledgeModal,
   onOpenContributionModal,
   onOpenSupabaseConfig,
+  onOpenNotifications,
+  onOpenMessages,
+  unreadNotificationsCount = 0,
+  unreadMessagesCount = 0,
 }) => {
   const { user, profile, isAdmin, isConfigured, signOut } = useAuth();
 
@@ -155,19 +165,52 @@ export const Header: React.FC<HeaderProps> = ({
                 {/* Fast Action Buttons */}
                 <div className="hidden sm:flex items-center gap-2">
                   <button
-                    onClick={onOpenPledgeModal}
-                    className="px-3 py-1.5 rounded-lg text-xs font-bold bg-purple-950 text-amber-300 border border-purple-800 hover:bg-purple-900 transition flex items-center gap-1 shadow-xs"
-                  >
-                    <PlusCircle className="w-3.5 h-3.5 text-amber-400" />
-                    Weka Ahadi
-                  </button>
-                  <button
                     onClick={onOpenContributionModal}
-                    className="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-gradient-to-r from-amber-500 to-amber-600 text-purple-950 hover:from-amber-400 hover:to-amber-500 transition flex items-center gap-1 shadow-sm"
+                    className="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 text-purple-950 hover:from-amber-300 hover:to-amber-500 transition flex items-center gap-1.5 shadow-sm"
                   >
                     <Receipt className="w-3.5 h-3.5 text-purple-950" />
-                    Rekodi Sadaka
+                    <span>Rekodi Sadaka</span>
                   </button>
+                  <button
+                    onClick={onOpenPledgeModal}
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold bg-[#1d0e33] text-amber-300 border border-purple-700/80 hover:bg-purple-900 transition flex items-center gap-1 shadow-xs"
+                  >
+                    <PlusCircle className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Weka Ahadi</span>
+                  </button>
+                </div>
+
+                {/* Notifications & Messages Group */}
+                <div className="flex items-center gap-1.5">
+                  {onOpenMessages && (
+                    <button
+                      onClick={onOpenMessages}
+                      className="relative p-2 rounded-xl bg-[#1a0e30] hover:bg-purple-900/70 border border-purple-800/60 text-purple-200 hover:text-white transition"
+                      title="Mawasiliano na Ujumbe"
+                    >
+                      <MessageSquare className="w-4 h-4 text-indigo-400" />
+                      {unreadMessagesCount > 0 && (
+                        <span className="absolute -top-1 -right-1 px-1.5 py-0.2 rounded-full text-[9px] font-black bg-indigo-500 text-white shadow-xs">
+                          {unreadMessagesCount}
+                        </span>
+                      )}
+                    </button>
+                  )}
+
+                  {onOpenNotifications && (
+                    <button
+                      onClick={onOpenNotifications}
+                      className="relative p-2 rounded-xl bg-[#1a0e30] hover:bg-purple-900/70 border border-purple-800/60 text-purple-200 hover:text-white transition"
+                      title="Arifa na Taarifa"
+                    >
+                      <Bell className="w-4 h-4 text-amber-400" />
+                      {unreadNotificationsCount > 0 && (
+                        <span className="absolute -top-1 -right-1 px-1.5 py-0.2 rounded-full text-[9px] font-black bg-rose-500 text-white shadow-xs animate-pulse">
+                          {unreadNotificationsCount}
+                        </span>
+                      )}
+                    </button>
+                  )}
                 </div>
 
                 {/* Profile Pill */}

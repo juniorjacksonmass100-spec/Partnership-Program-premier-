@@ -5,15 +5,12 @@ import { supabase, formatSupabaseError } from '../lib/supabase';
 import { 
   X, 
   Sparkles, 
-  HeartHandshake, 
   Send, 
   Loader2, 
   CheckCircle2, 
   AlertCircle, 
-  Quote, 
-  Calendar 
+  Tag 
 } from 'lucide-react';
-import { formatDateSwahili } from '../utils/formatters';
 
 interface TestimonialModalProps {
   isOpen: boolean;
@@ -25,7 +22,6 @@ interface TestimonialModalProps {
 export const TestimonialModal: React.FC<TestimonialModalProps> = ({
   isOpen,
   onClose,
-  userTestimonials = [],
   onSuccess,
 }) => {
   const { user, profile } = useAuth();
@@ -65,7 +61,7 @@ export const TestimonialModal: React.FC<TestimonialModalProps> = ({
           title: title.trim(),
           category: category.trim(),
           content: content.trim(),
-          is_approved: true, // Default active so immediately visible or admin can manage
+          is_approved: true,
         },
       ]);
 
@@ -85,13 +81,14 @@ export const TestimonialModal: React.FC<TestimonialModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-purple-950/75 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="relative w-full max-w-xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-purple-200 dark:border-purple-900/40 overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#080312]/80 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="relative w-full max-w-xl bg-[#140827] text-slate-100 rounded-3xl shadow-2xl border border-purple-800/60 overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="bg-gradient-to-r from-purple-950 via-purple-900 to-indigo-950 p-6 text-white relative">
+        <div className="bg-gradient-to-r from-purple-950 via-purple-900 to-indigo-950 p-6 text-white relative border-b border-purple-800/50 shrink-0">
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 p-1.5 text-purple-200 hover:text-white rounded-full hover:bg-white/10 transition"
+            className="absolute top-4 right-4 p-1.5 text-purple-300 hover:text-white rounded-full hover:bg-white/10 transition"
+            title="Funga"
           >
             <X className="w-5 h-5" />
           </button>
@@ -100,25 +97,25 @@ export const TestimonialModal: React.FC<TestimonialModalProps> = ({
             <span>Kazi Kuu za Mungu</span>
           </div>
           <h2 className="font-serif font-bold text-xl text-white">
-            Toa Ushuhuda Wako wa Ushirika & Baraka
+            Shuhudia Wema wa Mungu
           </h2>
-          <p className="text-xs text-purple-200 mt-0.5">
-            "Wakamshinda kwa damu ya Mwana-Kondoo, na kwa neno la ushuhuda wao" — Ufunuo 12:11
+          <p className="text-xs text-purple-200/90 mt-0.5">
+            "Nao wakamshinda kwa damu ya Mwana-kondoo, na kwa neno la ushuhuda wao" — Ufunuo 12:11
           </p>
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto flex-1 space-y-5 text-slate-800 dark:text-slate-100">
+        <div className="p-6 overflow-y-auto flex-1 space-y-4">
           {errorMsg && (
-            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+            <div className="p-3.5 rounded-xl bg-rose-950/80 border border-rose-600/60 text-rose-200 text-xs flex items-center gap-2.5">
+              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
               <span>{errorMsg}</span>
             </div>
           )}
 
           {successMsg && (
-            <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <div className="p-3.5 rounded-xl bg-emerald-950/80 border border-emerald-600/60 text-emerald-200 text-xs flex items-center gap-2.5">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
               <span>{successMsg}</span>
             </div>
           )}
@@ -126,7 +123,7 @@ export const TestimonialModal: React.FC<TestimonialModalProps> = ({
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+              <label className="block text-xs font-bold text-purple-200 mb-1.5">
                 Kichwa cha Ushuhuda *
               </label>
               <input
@@ -135,30 +132,33 @@ export const TestimonialModal: React.FC<TestimonialModalProps> = ({
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="mfano: Jinsi Mungu Alivyofungua Milango Baada ya Ahadi ya Hekalu"
-                className="w-full px-3 py-2 text-xs border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 focus:ring-2 focus:ring-purple-600 outline-hidden"
+                className="w-full px-3.5 py-2.5 text-sm bg-[#1c0f33] text-white border border-purple-700/60 rounded-xl focus:border-amber-400 focus:ring-1 focus:ring-amber-400 outline-hidden placeholder-purple-300/40 font-medium"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Kategoria ya Ushuhuda
+              <label className="block text-xs font-bold text-purple-200 mb-1.5">
+                Kategoria ya Ushuhuda *
               </label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full px-3 py-2 text-xs border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 focus:ring-2 focus:ring-purple-600 outline-hidden"
-              >
-                <option value="Utoaji na Miujiza ya Kifedha">Utoaji na Miujiza ya Kifedha</option>
-                <option value="Ujenzi wa Hekalu la Bwana">Ujenzi wa Hekalu la Bwana</option>
-                <option value="Uponyaji wa Kimuujiza">Uponyaji wa Kimuujiza</option>
-                <option value="Amani na Ushindi Kwenye Familia">Amani na Ushindi Kwenye Familia</option>
-                <option value="Kazi, Biashara & Ajira Mpya">Kazi, Biashara & Ajira Mpya</option>
-                <option value="Ushuhuda wa Shukrani ya Kipekee">Ushuhuda wa Shukrani ya Kipekee</option>
-              </select>
+              <div className="relative">
+                <Tag className="w-4 h-4 text-purple-400 absolute left-3 top-3 pointer-events-none" />
+                <select
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2.5 text-sm bg-[#1c0f33] text-white border border-purple-700/60 rounded-xl focus:border-amber-400 focus:ring-1 focus:ring-amber-400 outline-hidden font-medium"
+                >
+                  <option value="Utoaji na Miujiza ya Kifedha" className="bg-[#140827] text-white">Utoaji na Miujiza ya Kifedha</option>
+                  <option value="Ujenzi wa Hekalu la Bwana" className="bg-[#140827] text-white">Ujenzi wa Hekalu la Bwana</option>
+                  <option value="Uponyaji wa Kimuujiza" className="bg-[#140827] text-white">Uponyaji wa Kimuujiza</option>
+                  <option value="Amani na Ushindi Kwenye Familia" className="bg-[#140827] text-white">Amani na Ushindi Kwenye Familia</option>
+                  <option value="Kazi, Biashara & Ajira Mpya" className="bg-[#140827] text-white">Kazi, Biashara & Ajira Mpya</option>
+                  <option value="Ushuhuda wa Shukrani ya Kipekee" className="bg-[#140827] text-white">Ushuhuda wa Shukrani ya Kipekee</option>
+                </select>
+              </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+              <label className="block text-xs font-bold text-purple-200 mb-1.5">
                 Ushuhuda Wako Kamili *
               </label>
               <textarea
@@ -167,58 +167,38 @@ export const TestimonialModal: React.FC<TestimonialModalProps> = ({
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 placeholder="Eleza kwa ufupi jinsi Mungu alivyokutendea tangu uanze kushiriki kwenye agano hili la dhabihu..."
-                className="w-full px-3 py-2 text-xs border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 focus:ring-2 focus:ring-purple-600 outline-hidden"
+                className="w-full px-3.5 py-2.5 text-sm bg-[#1c0f33] text-white border border-purple-700/60 rounded-xl focus:border-amber-400 focus:ring-1 focus:ring-amber-400 outline-hidden placeholder-purple-300/40 font-medium"
               />
             </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-2.5 bg-gradient-to-r from-purple-900 via-purple-800 to-indigo-950 text-amber-300 font-bold text-xs rounded-xl shadow-md hover:from-purple-800 hover:to-purple-700 transition flex items-center justify-center gap-2 disabled:opacity-60 border border-amber-500/30"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin text-amber-300" />
-                  <span>Inahifadhiwa kwenye Supabase...</span>
-                </>
-              ) : (
-                <>
-                  <Send className="w-4 h-4 text-amber-300" />
-                  <span>Tuma Ushuhuda Wangu</span>
-                </>
-              )}
-            </button>
-          </form>
-
-          {/* User's Previous Testimonies */}
-          {userTestimonials.length > 0 && (
-            <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
-              <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
-                Shuhuda Zako Zilizopita ({userTestimonials.length})
-              </h4>
-              <div className="space-y-2">
-                {userTestimonials.map((t) => (
-                  <div
-                    key={t.id}
-                    className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs"
-                  >
-                    <div className="flex items-center justify-between gap-1 mb-1">
-                      <span className="font-bold text-purple-950 dark:text-amber-200">{t.title}</span>
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
-                        t.is_approved ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-                      }`}>
-                        {t.is_approved ? 'Inaonekana hadharani' : 'Inakaguliwa'}
-                      </span>
-                    </div>
-                    <p className="text-slate-600 dark:text-slate-300 line-clamp-2 italic">"{t.content}"</p>
-                    <span className="text-[10px] text-slate-400 mt-1 block">
-                      {formatDateSwahili(t.created_at)}
-                    </span>
-                  </div>
-                ))}
-              </div>
+            {/* Buttons: Cancel & Submit */}
+            <div className="pt-2 flex items-center justify-end gap-3 border-t border-purple-800/40 mt-4">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2.5 rounded-xl bg-purple-950/80 hover:bg-purple-900 text-purple-200 font-semibold text-xs border border-purple-700/50 transition"
+              >
+                Ghairi
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex-1 sm:flex-none px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 text-purple-950 font-bold text-xs hover:from-amber-400 hover:to-amber-300 transition flex items-center justify-center gap-2 shadow-lg disabled:opacity-60"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-purple-950" />
+                    <span>Inatuma...</span>
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4 text-purple-950" />
+                    <span>Tuma Ushuhuda Wangu</span>
+                  </>
+                )}
+              </button>
             </div>
-          )}
+          </form>
         </div>
       </div>
     </div>
