@@ -74,7 +74,7 @@ export const Header: React.FC<HeaderProps> = ({
             </span>
             <span className="hidden md:inline text-purple-300">|</span>
             <span className="hidden md:inline text-purple-200 italic truncate">
-              "Nikusanidieni wacha Mungu wangu, Waliofanya agano nami kwa dhabihu" — Zaburi 50:5
+              "Nikusanyieni wacha Mungu wangu, Waliofanya agano nami kwa dhabihu" — Zaburi 50:5
             </span>
           </div>
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import emblemImg from '../assets/images/ministry_emblem_1790338280903.jpg';
+import emblemImg from '../assets/images/church_app_icon_1791534447376.jpg';
 
 interface EmblemLogoProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';

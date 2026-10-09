@@ -77,7 +77,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
                     MPANGO WA USHIRIKA NA UTOAJI
                   </p>
                   <p className="text-[11px] text-purple-900 font-serif italic mt-0.5">
-                    "Nikusanidieni wacha Mungu wangu, Waliofanya agano nami kwa dhabihu" — Zaburi 50:5
+                    "Nikusanyieni wacha Mungu wangu, Waliofanya agano nami kwa dhabihu" — Zaburi 50:5
                   </p>
                   <p className="text-[10px] text-slate-500">Ufunuo wa Yohana 21:1-6 • Makao Makuu, Tanzania</p>
                 </div>

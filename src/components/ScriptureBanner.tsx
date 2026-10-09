@@ -36,7 +36,7 @@ export const ScriptureBanner: React.FC<ScriptureBannerProps> = ({ onJoinClick, o
           {/* Scripture Verse Quote Card */}
           <div className="my-4 p-4 rounded-xl bg-purple-900/60 border border-amber-400/30 backdrop-blur-xs text-left">
             <p className="text-amber-100 font-serif text-sm sm:text-base italic leading-relaxed">
-              "Nikusanidieni wacha Mungu wangu, Waliofanya agano nami kwa dhabihu."
+              "Nikusanyieni wacha Mungu wangu, Waliofanya agano nami kwa dhabihu."
             </p>
             <div className="mt-1 flex items-center justify-between text-xs text-amber-300 font-semibold">
               <span>— Zaburi 50:5</span>

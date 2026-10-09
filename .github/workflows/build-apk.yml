@@ -39,7 +39,23 @@ jobs:
       - name: Install Node Dependencies
         run: npm install --legacy-peer-deps
 
+      - name: Configure Production Environment Variables
+        run: |
+          echo "Setting up Supabase environment for build..."
+          if [ -n "${{ secrets.VITE_SUPABASE_URL }}" ] || [ -n "${{ secrets.SUPABASE_URL }}" ]; then
+            URL="${{ secrets.VITE_SUPABASE_URL || secrets.SUPABASE_URL }}"
+            KEY="${{ secrets.VITE_SUPABASE_ANON_KEY || secrets.SUPABASE_ANON_KEY || secrets.SUPABASE_KEY }}"
+            echo "VITE_SUPABASE_URL=$URL" > .env.production
+            echo "VITE_SUPABASE_ANON_KEY=$KEY" >> .env.production
+            echo "VITE_SUPABASE_URL=$URL" > .env
+            echo "VITE_SUPABASE_ANON_KEY=$KEY" >> .env
+            echo "Supabase secrets injected into build environment."
+          fi
+
       - name: Build Web Application
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || secrets.SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || secrets.SUPABASE_ANON_KEY || secrets.SUPABASE_KEY }}
         run: npm run build
 
       - name: Initialize Capacitor Android if not present
@@ -49,6 +65,13 @@ jobs:
             npx cap add android
           fi
           npx cap sync android
+
+      - name: Ensure Persistent Keystore for Smooth Updates
+        run: |
+          if [ ! -f "android/app/debug.keystore" ]; then
+            echo "Generating persistent signing keystore..."
+            keytool -genkey -v -keystore android/app/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Jerusalem Ministry, OU=Mobile, O=Jerusalem Ministry of Gospel, L=Dar es Salaam, ST=Dar es Salaam, C=TZ"
+          fi
 
       - name: Grant Execute Permission for Gradle Wrapper
         run: |

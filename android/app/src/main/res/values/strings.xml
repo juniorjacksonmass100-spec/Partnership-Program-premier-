@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Jerusalem Ministry</string>
+    <string name="title_activity_main">Jerusalem Ministry</string>
+    <string name="package_name">com.jerusalem.ministry.app</string>
+    <string name="custom_url_scheme">com.jerusalem.ministry.app</string>
+</resources>
