@@ -26,7 +26,8 @@ import {
   ChevronRight,
   ChevronLeft,
   Search,
-  MessageSquare
+  MessageSquare,
+  RefreshCcw
 } from 'lucide-react';
 import { PartnershipGivingCard } from './PartnershipGivingCard';
 import { triggerHaptic } from '../utils/haptics';
@@ -40,6 +41,7 @@ interface PartnerDashboardProps {
   onViewReceipt: (contribution: Contribution) => void;
   onOpenTestimonialModal?: () => void;
   onOpenMessages?: () => void;
+  onRefreshData?: () => void;
   currentSubTab?: 'overview' | 'pledges' | 'contributions' | 'reports';
   newsList?: MinistryNews[];
 }
@@ -53,6 +55,7 @@ export const PartnerDashboard: React.FC<PartnerDashboardProps> = ({
   onViewReceipt,
   onOpenTestimonialModal,
   onOpenMessages,
+  onRefreshData,
   currentSubTab = 'overview',
   newsList = [],
 }) => {
@@ -190,6 +193,19 @@ export const PartnerDashboard: React.FC<PartnerDashboardProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            {onRefreshData && (
+              <button
+                onClick={() => {
+                  triggerHaptic('medium');
+                  onRefreshData();
+                }}
+                className="px-3.5 py-2.5 rounded-xl bg-purple-900/80 hover:bg-purple-800 text-amber-300 font-bold text-xs border border-purple-600/70 transition flex items-center gap-1.5 shadow-sm active:scale-95"
+                title="Bofya kuleta data mpya zilizosasishwa"
+              >
+                <RefreshCcw className="w-3.5 h-3.5 text-amber-400" />
+                <span>Onyesha Upya</span>
+              </button>
+            )}
             <button
               onClick={() => {
                 triggerHaptic('light');

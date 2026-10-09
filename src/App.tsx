@@ -586,6 +586,7 @@ function MainAppContent() {
                   onViewReceipt={handleViewReceipt}
                   onOpenTestimonialModal={() => setTestimonialModalOpen(true)}
                   onOpenMessages={() => setMessagingModalOpen(true)}
+                  onRefreshData={handleManualRefresh}
                   currentSubTab={currentTab as any}
                   newsList={newsList}
                 />
