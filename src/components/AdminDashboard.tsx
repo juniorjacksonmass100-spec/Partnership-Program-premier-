@@ -41,6 +41,7 @@ import {
   Phone,
   Building2
 } from 'lucide-react';
+import { triggerHaptic } from '../utils/haptics';
 
 interface AdminDashboardProps {
   allPartners: Profile[];
@@ -337,11 +338,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
           {/* Grouped & Organised Action Buttons */}
           <div className="flex flex-wrap items-center gap-3 shrink-0 w-full xl:w-auto">
+            {/* Quick Refresh Button */}
+            <button
+              onClick={() => {
+                triggerHaptic('medium');
+                onRefreshData();
+              }}
+              className="px-3.5 py-2.5 rounded-2xl bg-purple-900/80 hover:bg-purple-800 text-amber-300 font-bold text-xs border border-purple-600/70 transition flex items-center gap-1.5 shadow-sm active:scale-95"
+              title="Sasisha data zote za hivi punde kutoka Supabase"
+            >
+              <RefreshCw className="w-3.5 h-3.5 text-amber-400" />
+              <span>Onyesha Upya</span>
+            </button>
+
             {/* GROUP 1: Fedha & Utoaji (Primary Actions) */}
             <div className="flex items-center gap-1.5 p-1 bg-[#1c0c38] rounded-2xl border border-purple-700/60 shadow-sm">
               <button
-                onClick={onOpenContributionModal}
-                className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-bold text-xs transition flex items-center gap-1.5 shadow-xs"
+                onClick={() => {
+                  triggerHaptic('light');
+                  onOpenContributionModal();
+                }}
+                className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-bold text-xs transition flex items-center gap-1.5 shadow-xs active:scale-95"
                 title="Pokea na rekodi mchango mpya"
               >
                 <Receipt className="w-3.5 h-3.5" />
@@ -349,8 +366,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </button>
 
               <button
-                onClick={onOpenPledgeModal}
-                className="px-3.5 py-2 rounded-xl bg-[#281347] hover:bg-purple-900 text-amber-300 font-bold text-xs border border-purple-600/70 transition flex items-center gap-1.5 shadow-xs"
+                onClick={() => {
+                  triggerHaptic('light');
+                  onOpenPledgeModal();
+                }}
+                className="px-3.5 py-2 rounded-xl bg-[#281347] hover:bg-purple-900 text-amber-300 font-bold text-xs border border-purple-600/70 transition flex items-center gap-1.5 shadow-xs active:scale-95"
                 title="Sajili ahadi mpya ya mshirika"
               >
                 <PlusCircle className="w-3.5 h-3.5 text-amber-400" />
@@ -358,8 +378,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </button>
 
               <button
-                onClick={onOpenExpenseModal}
-                className="px-3 py-2 rounded-xl bg-rose-900/60 hover:bg-rose-800 text-rose-200 hover:text-white font-bold text-xs transition flex items-center gap-1.5 border border-rose-800/60"
+                onClick={() => {
+                  triggerHaptic('light');
+                  onOpenExpenseModal();
+                }}
+                className="px-3.5 py-2 rounded-xl bg-rose-900/60 hover:bg-rose-800 text-rose-200 hover:text-white font-bold text-xs transition flex items-center gap-1.5 border border-rose-800/60 active:scale-95"
                 title="Rekodi gharama na matumizi ya huduma"
               >
                 <TrendingDown className="w-3.5 h-3.5 text-rose-400" />
@@ -371,8 +394,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <div className="flex items-center gap-1.5 p-1 bg-[#1c0c38] rounded-2xl border border-purple-700/60 shadow-sm">
               {onOpenMessagingModal && (
                 <button
-                  onClick={onOpenMessagingModal}
-                  className="px-3 py-2 rounded-xl bg-purple-900/80 hover:bg-purple-800 text-amber-300 font-bold text-xs border border-purple-700/60 transition flex items-center gap-1.5 relative shadow-xs"
+                  onClick={() => {
+                    triggerHaptic('light');
+                    onOpenMessagingModal();
+                  }}
+                  className="px-3 py-2 rounded-xl bg-purple-900/80 hover:bg-purple-800 text-amber-300 font-bold text-xs border border-purple-700/60 transition flex items-center gap-1.5 relative shadow-xs active:scale-95"
                   title="Fungua mawasiliano na washirika"
                 >
                   <MessageSquare className="w-3.5 h-3.5 text-indigo-400" />
@@ -385,8 +411,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
               {onOpenManageNews && (
                 <button
-                  onClick={onOpenManageNews}
-                  className="px-3 py-2 rounded-xl bg-[#281347] hover:bg-purple-900 text-purple-200 hover:text-white font-bold text-xs transition flex items-center gap-1.5"
+                  onClick={() => {
+                    triggerHaptic('light');
+                    onOpenManageNews();
+                  }}
+                  className="px-3 py-2 rounded-xl bg-[#281347] hover:bg-purple-900 text-purple-200 hover:text-white font-bold text-xs transition flex items-center gap-1.5 active:scale-95"
                   title="Dhibiti matangazo na habari za huduma"
                 >
                   <Radio className="w-3.5 h-3.5 text-amber-400" />
@@ -396,8 +425,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
               {onOpenManageTestimonials && (
                 <button
-                  onClick={onOpenManageTestimonials}
-                  className="px-3 py-2 rounded-xl bg-[#281347] hover:bg-purple-900 text-purple-200 hover:text-white font-bold text-xs transition flex items-center gap-1.5"
+                  onClick={() => {
+                    triggerHaptic('light');
+                    onOpenManageTestimonials();
+                  }}
+                  className="px-3 py-2 rounded-xl bg-[#281347] hover:bg-purple-900 text-purple-200 hover:text-white font-bold text-xs transition flex items-center gap-1.5 active:scale-95"
                   title="Kagua shuhuda za washirika"
                 >
                   <Sparkles className="w-3.5 h-3.5 text-amber-400" />
@@ -410,8 +442,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <div className="flex items-center gap-1.5 p-1 bg-[#1c0c38] rounded-2xl border border-rose-900/40 shadow-sm">
               {onOpenWipeDatabaseModal && (
                 <button
-                  onClick={onOpenWipeDatabaseModal}
-                  className="px-3 py-2 rounded-xl bg-rose-950/80 hover:bg-rose-900 text-rose-300 hover:text-rose-100 font-bold text-xs border border-rose-800/60 transition flex items-center gap-1.5 shadow-xs"
+                  onClick={() => {
+                    triggerHaptic('warning');
+                    onOpenWipeDatabaseModal();
+                  }}
+                  className="px-3 py-2 rounded-xl bg-rose-950/80 hover:bg-rose-900 text-rose-300 hover:text-rose-100 font-bold text-xs border border-rose-800/60 transition flex items-center gap-1.5 shadow-xs active:scale-95"
                   title="Futa kanzidata au safisha rekodi zilizowekwa kwa majaribio"
                 >
                   <Trash2 className="w-3.5 h-3.5 text-rose-400" />
@@ -480,8 +515,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 border-b border-purple-800/40 pb-3">
         <div className="flex flex-wrap gap-1 bg-[#160a26] border border-purple-800/50 p-1.5 rounded-2xl text-xs font-bold">
           <button
-            onClick={() => setActiveAdminTab('overview')}
-            className={`px-3 py-2 rounded-xl transition ${
+            onClick={() => {
+              triggerHaptic('selection');
+              setActiveAdminTab('overview');
+            }}
+            className={`px-3 py-2 rounded-xl transition-all active:scale-95 ${
               activeAdminTab === 'overview'
                 ? 'bg-purple-900 text-amber-300 shadow-xs'
                 : 'text-purple-300 hover:text-white'
@@ -490,8 +528,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             Muhtasari wa Fedha
           </button>
           <button
-            onClick={() => setActiveAdminTab('partners')}
-            className={`px-3 py-2 rounded-xl transition ${
+            onClick={() => {
+              triggerHaptic('selection');
+              setActiveAdminTab('partners');
+            }}
+            className={`px-3 py-2 rounded-xl transition-all active:scale-95 ${
               activeAdminTab === 'partners'
                 ? 'bg-purple-900 text-amber-300 shadow-xs'
                 : 'text-purple-300 hover:text-white'
@@ -500,8 +541,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             Washirika ({allPartners.length})
           </button>
           <button
-            onClick={() => setActiveAdminTab('pledges')}
-            className={`px-3 py-2 rounded-xl transition ${
+            onClick={() => {
+              triggerHaptic('selection');
+              setActiveAdminTab('pledges');
+            }}
+            className={`px-3 py-2 rounded-xl transition-all active:scale-95 ${
               activeAdminTab === 'pledges'
                 ? 'bg-purple-900 text-amber-300 shadow-xs'
                 : 'text-purple-300 hover:text-white'
@@ -510,8 +554,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             Ahadi ({filteredPledges.length})
           </button>
           <button
-            onClick={() => setActiveAdminTab('contributions')}
-            className={`px-3 py-2 rounded-xl transition ${
+            onClick={() => {
+              triggerHaptic('selection');
+              setActiveAdminTab('contributions');
+            }}
+            className={`px-3 py-2 rounded-xl transition-all active:scale-95 ${
               activeAdminTab === 'contributions'
                 ? 'bg-purple-900 text-amber-300 shadow-xs'
                 : 'text-purple-300 hover:text-white'
@@ -520,8 +567,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             Michango ({filteredContributions.length})
           </button>
           <button
-            onClick={() => setActiveAdminTab('expenses')}
-            className={`px-3 py-2 rounded-xl transition ${
+            onClick={() => {
+              triggerHaptic('selection');
+              setActiveAdminTab('expenses');
+            }}
+            className={`px-3 py-2 rounded-xl transition-all active:scale-95 ${
               activeAdminTab === 'expenses'
                 ? 'bg-purple-900 text-amber-300 shadow-xs'
                 : 'text-purple-300 hover:text-white'
@@ -530,8 +580,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             Matumizi ({filteredExpenses.length})
           </button>
           <button
-            onClick={() => setActiveAdminTab('messages')}
-            className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 ${
+            onClick={() => {
+              triggerHaptic('selection');
+              setActiveAdminTab('messages');
+            }}
+            className={`px-3 py-2 rounded-xl transition-all active:scale-95 flex items-center gap-1.5 ${
               activeAdminTab === 'messages'
                 ? 'bg-purple-900 text-amber-300 shadow-xs'
                 : 'text-purple-300 hover:text-white'
@@ -546,8 +599,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             )}
           </button>
           <button
-            onClick={() => setActiveAdminTab('reports')}
-            className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 ${
+            onClick={() => {
+              triggerHaptic('selection');
+              setActiveAdminTab('reports');
+            }}
+            className={`px-3 py-2 rounded-xl transition-all active:scale-95 flex items-center gap-1.5 ${
               activeAdminTab === 'reports'
                 ? 'bg-purple-900 text-amber-300 shadow-xs'
                 : 'text-purple-300 hover:text-white'
@@ -557,8 +613,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <span>Ripoti Excel</span>
           </button>
           <button
-            onClick={() => setActiveAdminTab('database')}
-            className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 ${
+            onClick={() => {
+              triggerHaptic('selection');
+              setActiveAdminTab('database');
+            }}
+            className={`px-3 py-2 rounded-xl transition-all active:scale-95 flex items-center gap-1.5 ${
               activeAdminTab === 'database'
                 ? 'bg-rose-950 text-rose-300 border border-rose-800'
                 : 'text-purple-300 hover:text-rose-300'

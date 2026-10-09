@@ -12,8 +12,11 @@ import {
   Loader2, 
   User, 
   Sparkles,
-  Link2 
+  Link2,
+  Phone,
+  Check
 } from 'lucide-react';
+import { triggerHaptic } from '../utils/haptics';
 import { Pledge, Profile, PaymentMethod, Contribution } from '../types/database.types';
 
 interface ContributionFormModalProps {
@@ -166,6 +169,35 @@ export const ContributionFormModal: React.FC<ContributionFormModalProps> = ({
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
+          {/* Official Partnership Giving Payment Target */}
+          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-[#1d0a33] via-[#160728] to-[#1d0a33] border border-amber-500/50 flex items-center justify-between gap-3 text-xs shadow-md">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 border border-amber-400/40">
+                <Phone className="w-4 h-4 animate-pulse" />
+              </div>
+              <div>
+                <span className="text-[10px] uppercase font-bold text-amber-300 block tracking-wide">
+                  Namba Rasmi ya Kutuma Sadaka / Ahadi:
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono font-black text-white text-sm tracking-wider">0660022949</span>
+                  <span className="text-purple-300 text-xs font-semibold">(Brighton Lameck Peter)</span>
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                navigator.clipboard?.writeText('0660022949');
+                triggerHaptic('success');
+              }}
+              className="px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-purple-950 font-bold text-xs transition active:scale-90 shadow-xs shrink-0"
+              title="Nakili namba ya simu"
+            >
+              Nakili Namba
+            </button>
+          </div>
+
           {errorMsg && (
             <div className="p-3.5 rounded-xl bg-rose-950/80 border border-rose-600/60 text-rose-200 text-xs flex items-start gap-2.5">
               <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />

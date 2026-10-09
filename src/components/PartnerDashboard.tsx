@@ -28,6 +28,8 @@ import {
   Search,
   MessageSquare
 } from 'lucide-react';
+import { PartnershipGivingCard } from './PartnershipGivingCard';
+import { triggerHaptic } from '../utils/haptics';
 
 interface PartnerDashboardProps {
   pledges: Pledge[];
@@ -189,23 +191,32 @@ export const PartnerDashboard: React.FC<PartnerDashboardProps> = ({
 
           <div className="flex flex-wrap items-center gap-2.5 shrink-0">
             <button
-              onClick={() => onOpenContributionModal()}
-              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 text-purple-950 font-bold text-xs hover:from-amber-300 hover:to-amber-500 transition flex items-center gap-1.5 shadow-md order-1 sm:order-1"
+              onClick={() => {
+                triggerHaptic('light');
+                onOpenContributionModal();
+              }}
+              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 text-purple-950 font-bold text-xs hover:from-amber-300 hover:to-amber-500 transition flex items-center gap-1.5 shadow-md order-1 sm:order-1 active:scale-95"
             >
               <Receipt className="w-4 h-4" />
               <span>Rekodi Sadaka</span>
             </button>
             <button
-              onClick={onOpenPledgeModal}
-              className="px-4 py-2.5 rounded-xl bg-purple-900/90 hover:bg-purple-800 text-amber-300 font-bold text-xs border border-purple-600/80 transition flex items-center gap-1.5 shadow-sm order-2 sm:order-2"
+              onClick={() => {
+                triggerHaptic('light');
+                onOpenPledgeModal();
+              }}
+              className="px-4 py-2.5 rounded-xl bg-purple-900/90 hover:bg-purple-800 text-amber-300 font-bold text-xs border border-purple-600/80 transition flex items-center gap-1.5 shadow-sm order-2 sm:order-2 active:scale-95"
             >
               <PlusCircle className="w-4 h-4 text-amber-400" />
               <span>Weka Ahadi Mpya</span>
             </button>
             {onOpenMessages && (
               <button
-                onClick={onOpenMessages}
-                className="px-3.5 py-2.5 rounded-xl bg-[#200e3d] hover:bg-purple-900 text-indigo-300 hover:text-white font-semibold text-xs border border-indigo-600/50 transition flex items-center gap-1.5 shadow-sm order-3 sm:order-3"
+                onClick={() => {
+                  triggerHaptic('light');
+                  onOpenMessages();
+                }}
+                className="px-3.5 py-2.5 rounded-xl bg-[#200e3d] hover:bg-purple-900 text-indigo-300 hover:text-white font-semibold text-xs border border-indigo-600/50 transition flex items-center gap-1.5 shadow-sm order-3 sm:order-3 active:scale-95"
                 title="Tuma ujumbe au ombi kwa Mchungaji / Admin"
               >
                 <MessageSquare className="w-4 h-4 text-indigo-400" />
@@ -214,8 +225,11 @@ export const PartnerDashboard: React.FC<PartnerDashboardProps> = ({
             )}
             {onOpenTestimonialModal && (
               <button
-                onClick={onOpenTestimonialModal}
-                className="px-3.5 py-2.5 rounded-xl bg-purple-950/60 hover:bg-purple-900/60 text-amber-300 font-semibold text-xs border border-purple-700/60 transition flex items-center gap-1.5 shadow-sm order-4 sm:order-4"
+                onClick={() => {
+                  triggerHaptic('light');
+                  onOpenTestimonialModal();
+                }}
+                className="px-3.5 py-2.5 rounded-xl bg-purple-950/60 hover:bg-purple-900/60 text-amber-300 font-semibold text-xs border border-purple-700/60 transition flex items-center gap-1.5 shadow-sm order-4 sm:order-4 active:scale-95"
                 title="Toa ushuhuda wa kile Mungu amekutendea"
               >
                 <Sparkles className="w-4 h-4 text-amber-400" />
@@ -283,6 +297,9 @@ export const PartnerDashboard: React.FC<PartnerDashboardProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Official Partnership Giving Account Box */}
+      <PartnershipGivingCard onRecordContribution={() => onOpenContributionModal()} />
 
       {/* Animated TV News Card for Individual Partner Page */}
       {activeNewsItems.length > 0 && (

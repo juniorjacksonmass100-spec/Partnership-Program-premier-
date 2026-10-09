@@ -30,7 +30,9 @@ import { AdminTestimonialsModal } from './components/AdminTestimonialsModal';
 import { NotificationModal } from './components/NotificationModal';
 import { MessagingModal } from './components/MessagingModal';
 import { WipeDatabaseModal } from './components/WipeDatabaseModal';
+import { PartnershipGivingCard } from './components/PartnershipGivingCard';
 import { EmblemLogo } from './components/EmblemLogo';
+import { triggerHaptic } from './utils/haptics';
 import { 
   HeartHandshake, 
   Receipt, 
@@ -175,6 +177,7 @@ function MainAppContent() {
   const [notifications, setNotifications] = useState<AppNotification[]>(DEFAULT_NOTIFICATIONS);
   const [messages, setMessages] = useState<DirectMessage[]>([]);
   const [dataLoading, setDataLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Fetch News and Testimonials (Public & Authenticated)
   const fetchNewsAndTestimonials = useCallback(async () => {
@@ -308,6 +311,17 @@ function MainAppContent() {
       setDataLoading(false);
     }
   }, [user?.id, isAdmin, fetchNewsAndTestimonials]);
+
+  // Manual refresh with smooth animations and haptics
+  const handleManualRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    triggerHaptic('medium');
+    try {
+      await Promise.all([fetchData(), fetchNewsAndTestimonials()]);
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 500);
+    }
+  }, [fetchData, fetchNewsAndTestimonials]);
 
   const fetchDataRef = useRef(fetchData);
   fetchDataRef.current = fetchData;
@@ -525,6 +539,8 @@ function MainAppContent() {
         onOpenSupabaseConfig={() => setSupabaseConfigModalOpen(true)}
         onOpenNotifications={() => setNotificationModalOpen(true)}
         onOpenMessages={() => setMessagingModalOpen(true)}
+        onRefreshData={handleManualRefresh}
+        isRefreshing={isRefreshing}
         unreadNotificationsCount={notifications.filter((n) => !n.is_read).length}
         unreadMessagesCount={messages.filter((m) => m.receiver_id === user?.id && !m.is_read).length}
       />
@@ -596,6 +612,9 @@ function MainAppContent() {
                 setAuthModalOpen(true);
               }}
             />
+
+            {/* Official Partnership & Pledge Giving Account */}
+            <PartnershipGivingCard onRecordContribution={() => handleOpenContribution()} />
 
             {/* Testimonials on public/login page for everyone to see */}
             <TestimonialSection
@@ -753,15 +772,26 @@ function MainAppContent() {
 
           <div className="flex flex-col sm:flex-row items-center gap-4 text-xs text-purple-300">
             <button
-              onClick={() => setSupabaseConfigModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-900/80 hover:bg-purple-800 text-amber-300 border border-purple-700 transition"
+              onClick={() => {
+                triggerHaptic('light');
+                setSupabaseConfigModalOpen(true);
+              }}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-purple-900/80 hover:bg-purple-800 text-amber-300 border border-purple-700 transition active:scale-95"
             >
               <Database className="w-3.5 h-3.5 text-amber-400" />
               <span>Hali ya Supabase & SQL</span>
             </button>
-            <span className="text-center">
-              © {new Date().getFullYear()} Jerusalem Ministry of Gospel. Haki zote zimehifadhiwa.
-            </span>
+          </div>
+        </div>
+
+        {/* Official Signature Section */}
+        <div className="mt-8 pt-6 border-t border-purple-900/50 flex flex-col sm:flex-row items-center justify-between text-xs text-purple-300/80 gap-3">
+          <span className="text-center sm:text-left">
+            © {new Date().getFullYear()} Jerusalem Ministry of Gospel. Haki zote zimehifadhiwa.
+          </span>
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-purple-950 via-[#1e0a35] to-purple-950 border border-amber-500/40 text-amber-300 font-bold shadow-lg tracking-wide hover:border-amber-400 transition">
+            <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+            <span>Developed by CEO Junior Jackson</span>
           </div>
         </div>
       </footer>

@@ -67,6 +67,24 @@
   animation-play-state: paused;
 }
 
+/* Smooth app transitions & interactive alive feel */
+html {
+  scroll-behavior: smooth;
+}
+
+button {
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.glow-amber-subtle {
+  box-shadow: 0 0 20px -5px rgba(251, 191, 36, 0.25);
+}
+
+.glow-purple-subtle {
+  box-shadow: 0 0 25px -5px rgba(168, 85, 247, 0.2);
+}
+
 @media print {
   body * {
     visibility: hidden;
